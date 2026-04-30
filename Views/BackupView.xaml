@@ -1,0 +1,85 @@
+<UserControl x:Class="AINovel.Views.BackupView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hc="https://handyorg.github.io/handycontrol">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="数据库备份与恢复" FontSize="24" FontWeight="Bold" Foreground="#1B95D9" Margin="0,0,0,15"/>
+
+        <!-- 备份设置 -->
+        <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,15">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
+            </Border.Effect>
+            <StackPanel>
+                <TextBlock Text="备份设置" FontSize="18" FontWeight="Bold" Foreground="#333" Margin="0,0,0,15"/>
+
+                <hc:Row Margin="0,0,0,15">
+                    <hc:Col Span="12">
+                        <StackPanel>
+                            <TextBlock Text="备份路径" Foreground="#666" Margin="0,0,0,5"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox Width="400" Text="{Binding BackupPath}" Style="{StaticResource TextBoxExtend}" IsReadOnly="True"/>
+                                <Button Content="选择..." Command="{Binding SelectBackupPathCommand}" Style="{StaticResource ButtonDefault}" Margin="10,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </hc:Col>
+                    <hc:Col Span="12">
+                        <StackPanel>
+                            <TextBlock Text="备份保留天数" Foreground="#666" Margin="0,0,0,5"/>
+                            <hc:NumericUpDown Value="{Binding BackupRetentionDays}" Minimum="1" Maximum="365" Style="{StaticResource NumericUpDownExtend}" Width="150"/>
+                            <TextBlock Text="超过天数的备份文件将被自动删除" Foreground="#999" FontSize="12" Margin="0,5,0,0"/>
+                        </StackPanel>
+                    </hc:Col>
+                </hc:Row>
+
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="立即备份" Command="{Binding ManualBackupCommand}" Style="{StaticResource ButtonPrimary}" Margin="0,0,10,0"/>
+                    <Button Content="保存设置" Command="{Binding SaveSettingsCommand}" Style="{StaticResource ButtonDefault}" Margin="0,0,10,0"/>
+                    <Button Content="清理过期备份" Command="{Binding DeleteOldBackupsCommand}" Style="{StaticResource ButtonDanger}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 备份历史 -->
+        <Border Grid.Row="2" Background="White" CornerRadius="8" Padding="20">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
+            </Border.Effect>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="备份历史" FontSize="18" FontWeight="Bold" Foreground="#333" Margin="0,0,0,15"/>
+
+                <ListBox Grid.Row="1" ItemsSource="{Binding BackupHistory}" SelectedItem="{Binding SelectedBackupFile}"
+                         Style="{StaticResource ListBoxCustom}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Padding="10" Margin="0,0,0,5" Background="#F8F9FA" CornerRadius="4">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8A7;" FontFamily="Segoe MDL2 Assets" Foreground="#1976D2" Margin="0,0,10,0"/>
+                                    <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="13"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <!-- 操作按钮 -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,15,0,0">
+            <Button Content="恢复选中备份" Command="{Binding RestoreBackupCommand}" Style="{StaticResource ButtonWarning}" Margin="0,0,10,0"/>
+            <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="#1976D9"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

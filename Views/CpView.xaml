@@ -1,0 +1,127 @@
+<UserControl x:Class="AINovel.Views.CpView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hc="https://handyorg.github.io/handycontrol">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="CP管理" FontSize="24" FontWeight="Bold" Foreground="#1B95D9" Margin="0,0,0,15"/>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- CP列表 -->
+            <Border Grid.Column="0" Background="White" CornerRadius="8" Padding="20" Margin="0,0,20,0">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
+                </Border.Effect>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="CP列表" FontSize="16" FontWeight="Bold" Foreground="#333" Margin="0,0,0,15"/>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="选择账号:" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#666"/>
+                        <ComboBox Width="200" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}"
+                                  DisplayMemberPath="AccountName"/>
+                        <Button Content="新增" Command="{Binding AddCpCommand}" Style="{StaticResource ButtonPrimary}" Margin="20,0,10,0"/>
+                        <Button Content="编辑" Command="{Binding EditCpCommand}" Style="{StaticResource ButtonDefault}" Margin="0,0,10,0"/>
+                        <Button Content="删除" Command="{Binding DeleteCpCommand}" Style="{StaticResource ButtonDanger}"/>
+                    </StackPanel>
+
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding Cps}" SelectedItem="{Binding SelectedCp}"
+                              AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                              BorderThickness="0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="60"/>
+                            <DataGridTextColumn Header="CP名称" Binding="{Binding Name}" Width="150"/>
+                            <DataGridTextColumn Header="简介" Binding="{Binding Description}" Width="*"/>
+                            <DataGridTextColumn Header="提示词ID" Binding="{Binding PromptId}" Width="80"/>
+                            <DataGridTextColumn Header="创建时间" Binding="{Binding CreateTime, StringFormat=yyyy-MM-dd}" Width="120"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <!-- 编辑面板 -->
+            <Border Grid.Column="1" Width="400" Background="White" CornerRadius="8" Padding="20"
+                    Visibility="{Binding IsEditing, Converter={StaticResource Boolean2VisibilityConverter}}">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.15"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="编辑CP" FontSize="18" FontWeight="Bold" Foreground="#1B95D9" Margin="0,0,0,15"/>
+
+                    <TextBlock Text="CP名称 *" Foreground="#666" Margin="0,0,0,5"/>
+                    <TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource TextBoxExtend}" Margin="0,0,0,15"/>
+
+                    <TextBlock Text="简介" Foreground="#666" Margin="0,0,0,5"/>
+                    <TextBox Text="{Binding EditDescription, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True" Height="80" VerticalScrollBarVisibility="Auto"
+                             Style="{StaticResource TextBoxExtend}" Margin="0,0,0,15"/>
+
+                    <TextBlock Text="提示词类型" Foreground="#666" Margin="0,0,0,5"/>
+                    <ComboBox Width="380" SelectedIndex="{Binding EditPromptType}" Margin="0,0,0,10">
+                        <ComboBoxItem Content="公共提示词"/>
+                        <ComboBoxItem Content="账号私有提示词"/>
+                    </ComboBox>
+
+                    <!-- 提示词选择 -->
+                    <StackPanel>
+                        <TextBlock Text="选择提示词" Foreground="#666" Margin="0,0,0,5"/>
+                        <ComboBox Width="380" ItemsSource="{Binding CommonPrompts}" SelectedItem="{Binding SelectedCommonPrompt}"
+                                  DisplayMemberPath="Title" Margin="0,0,0,5">
+                            <ComboBox.Style>
+                                <Style TargetType="ComboBox">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding EditPromptType}" Value="1">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ComboBox.Style>
+                        </ComboBox>
+                        <ComboBox Width="380" ItemsSource="{Binding AccountPrompts}" SelectedItem="{Binding SelectedAccountPrompt}"
+                                  DisplayMemberPath="Title" Margin="0,0,0,5">
+                            <ComboBox.Style>
+                                <Style TargetType="ComboBox">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding EditPromptType}" Value="1">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ComboBox.Style>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <TextBlock Text="提示词内容应包含 &lt;在此填入用户提供的核心梗内容&gt; 占位符" Foreground="#999" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,15"/>
+
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="保存" Command="{Binding SaveCpCommand}" Style="{StaticResource ButtonPrimary}" Margin="0,0,10,0"/>
+                        <Button Content="取消" Command="{Binding CancelEditCommand}" Style="{StaticResource ButtonDefault}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- 状态提示 -->
+        <Border Grid.Row="1" Background="#E3F2FD" CornerRadius="4" Padding="10" Margin="0,15,20,0"
+                HorizontalAlignment="Right" VerticalAlignment="Top">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="#1976D2"/>
+        </Border>
+    </Grid>
+</UserControl>

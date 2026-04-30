@@ -1,0 +1,46 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.sln.docstates
+*.log
+*.dgml
+*.psess
+*.vsp
+*.vspx
+
+## NuGet
+packages/
+*.nupkg
+
+## VS
+.vs/
+*.csproj.user
+*.dbmdl
+*.jfm
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## SQLite
+*.db
+
+## Temp files
+*.tmp
+*.swp
+*~
+
+## Images / docs (if any)
+Thumbs.db

@@ -1,0 +1,116 @@
+<UserControl x:Class="AINovel.Views.AccountView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hc="https://handyorg.github.io/handycontrol">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 页面标题 -->
+        <TextBlock Grid.Row="0" Text="账号管理" FontSize="24" FontWeight="Bold" Foreground="#1B95D9" Margin="0,0,0,15"/>
+
+        <!-- 工具栏 -->
+        <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal">
+                <hc:SearchBar Width="250" hc:InfoElement.Placeholder="搜索账号名称"
+                              Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                              Style="{StaticResource SearchBarPlus}" Margin="0,0,10,0"/>
+                <Button Content="搜索" Command="{Binding SearchCommand}" Style="{StaticResource ButtonDefault}" Margin="0,0,10,0"/>
+                <Button Content="新增账号" Command="{Binding AddNewCommand}" Style="{StaticResource ButtonPrimary}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 账号列表 -->
+        <Border Grid.Row="2" Background="White" CornerRadius="8" Padding="15">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
+            </Border.Effect>
+            <DataGrid ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}"
+                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                      HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                      BorderThickness="0" RowHeaderWidth="0">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="60"/>
+                    <DataGridTextColumn Header="账号名称" Binding="{Binding AccountName}" Width="150"/>
+                    <DataGridTextColumn Header="备注" Binding="{Binding Remark}" Width="*"/>
+                    <DataGridTemplateColumn Header="状态" Width="80">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding IsEnable, Converter={x:Null}}" FontWeight="Bold"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="创建时间" Binding="{Binding CreateTime, StringFormat=yyyy-MM-dd}" Width="120"/>
+                    <DataGridTemplateColumn Header="操作" Width="200">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="编辑" Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            Style="{StaticResource ButtonDefault}" Margin="0,0,5,0" Padding="10,5"/>
+                                    <Button Content="删除" Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            Style="{StaticResource ButtonDanger}" Margin="0,0,5,0" Padding="10,5"/>
+                                    <Button Content="{Binding IsEnable, Converter={x:Null}}" Command="{Binding DataContext.ToggleEnableCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            Style="{StaticResource ButtonWarning}" Padding="10,5"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- 编辑面板 -->
+        <Border Grid.Row="3" Background="White" CornerRadius="8" Padding="20" Margin="0,15,0,0"
+                Visibility="{Binding IsEditing, Converter={StaticResource Boolean2VisibilityConverter}}">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
+            </Border.Effect>
+            <StackPanel>
+                <TextBlock Text="{Binding SelectedAccount, Converter={x:Null}, ConverterParameter=编辑账号|新增账号}"
+                           FontSize="18" FontWeight="Bold" Foreground="#1B95D9" Margin="0,0,0,15"/>
+
+                <hc:Row Margin="0,0,0,15">
+                    <hc:Col Span="8">
+                        <StackPanel>
+                            <TextBlock Text="账号名称 *" Foreground="#666" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding EditAccountName, UpdateSourceTrigger=PropertyChanged}"
+                                     hc:InfoElement.Placeholder="请输入账号名称"/>
+                        </StackPanel>
+                    </hc:Col>
+                    <hc:Col Span="8">
+                        <StackPanel>
+                            <TextBlock Text="备注" Foreground="#666" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding EditRemark, UpdateSourceTrigger=PropertyChanged}"
+                                     hc:InfoElement.Placeholder="可选"/>
+                        </StackPanel>
+                    </hc:Col>
+                    <hc:Col Span="8">
+                        <StackPanel>
+                            <TextBlock Text="启用状态" Foreground="#666" Margin="0,0,0,5"/>
+                            <CheckBox IsChecked="{Binding EditIsEnable}" Content="启用账号" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </hc:Col>
+                </hc:Row>
+
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="保存" Command="{Binding SaveCommand}" Style="{StaticResource ButtonPrimary}" Margin="0,0,10,0"/>
+                    <Button Content="取消" Command="{Binding CancelEditCommand}" Style="{StaticResource ButtonDefault}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 状态提示 -->
+        <Border Grid.Row="3" Background="#E3F2FD" CornerRadius="4" Padding="10" Margin="0,10,0,0"
+                Visibility="{Binding StatusMessage, Converter={StaticResource String2VisibilityConverter}}"
+                HorizontalAlignment="Right" VerticalAlignment="Top">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="#1976D2"/>
+        </Border>
+    </Grid>
+</UserControl>

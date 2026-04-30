@@ -1,0 +1,222 @@
+<UserControl
+    x:Class="AINovel.Views.FileUploadView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:hc="https://handyorg.github.io/handycontrol">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            Grid.Row="0"
+            Margin="0,0,0,15"
+            FontSize="24"
+            FontWeight="Bold"
+            Foreground="#1B95D9"
+            Text="文件上传与核心梗拆分" />
+
+        <!--  文件选择区域  -->
+        <Border
+            Grid.Row="1"
+            Margin="0,0,0,15"
+            Padding="20"
+            Background="White"
+            CornerRadius="8">
+            <Border.Effect>
+                <DropShadowEffect
+                    BlurRadius="10"
+                    Opacity="0.1"
+                    ShadowDepth="2" />
+            </Border.Effect>
+            <StackPanel>
+                <StackPanel Margin="0,0,0,15" Orientation="Horizontal">
+                    <TextBlock
+                        Margin="0,0,10,0"
+                        VerticalAlignment="Center"
+                        Foreground="#666"
+                        Text="选择账号:" />
+                    <ComboBox
+                        Width="200"
+                        DisplayMemberPath="AccountName"
+                        ItemsSource="{Binding Accounts}"
+                        SelectedItem="{Binding SelectedAccount}"
+                        Style="{StaticResource ComboBoxExtend}" />
+                    <TextBlock
+                        Margin="20,0,10,0"
+                        VerticalAlignment="Center"
+                        Foreground="#666"
+                        Text="选择CP:" />
+                    <ComboBox
+                        Width="200"
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding Cps}"
+                        SelectedItem="{Binding SelectedCp}"
+                        Style="{StaticResource ComboBoxExtend}" />
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal">
+                    <TextBox
+                        Width="450"
+                        hc:InfoElement.Placeholder="选择Markdown或Word文件"
+                        IsReadOnly="True"
+                        Style="{StaticResource TextBoxExtend}"
+                        Text="{Binding FilePath}" />
+                    <Button
+                        Margin="10,0,0,0"
+                        Command="{Binding BrowseFileCommand}"
+                        Content="浏览..."
+                        Style="{StaticResource ButtonPrimary}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!--  核心梗预览  -->
+        <Border
+            Grid.Row="2"
+            Margin="0,0,0,15"
+            Padding="20"
+            Background="White"
+            CornerRadius="8">
+            <Border.Effect>
+                <DropShadowEffect
+                    BlurRadius="10"
+                    Opacity="0.1"
+                    ShadowDepth="2" />
+            </Border.Effect>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock
+                    Grid.Row="0"
+                    Margin="0,0,0,15"
+                    FontSize="16"
+                    FontWeight="Bold"
+                    Foreground="#333"
+                    Text="核心梗预览" />
+
+                <DataGrid
+                    Grid.Row="1"
+                    AutoGenerateColumns="False"
+                    BorderThickness="0"
+                    CanUserAddRows="False"
+                    IsReadOnly="True"
+                    ItemsSource="{Binding PreviewCores}"
+                    Visibility="{Binding HasPreview, Converter={StaticResource Boolean2VisibilityConverter}}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn
+                            Width="100"
+                            Binding="{Binding SerialNumber}"
+                            Header="序号" />
+                        <DataGridTextColumn
+                            Width="*"
+                            Binding="{Binding Content}"
+                            Header="内容" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <StackPanel
+                    Grid.Row="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="{Binding HasPreview, Converter={StaticResource Boolean2VisibilityReConverter}}">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontFamily="Segoe MDL2 Assets"
+                        FontSize="48"
+                        Foreground="#CCCCCC"
+                        Text="&#xE73E;" />
+                    <TextBlock
+                        Margin="0,10,0,0"
+                        HorizontalAlignment="Center"
+                        Foreground="#999"
+                        Text="请上传文件以预览核心梗" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!--  操作按钮  -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal">
+            <Button
+                Margin="0,0,10,0"
+                Command="{Binding SaveToAccountCommand}"
+                Content="保存到账号"
+                Style="{StaticResource ButtonPrimary}" />
+            <Button
+                Margin="0,0,10,0"
+                Command="{Binding AddManualCoreCommand}"
+                Content="手工添加核心梗"
+                Style="{StaticResource ButtonDefault}" />
+            <TextBlock
+                VerticalAlignment="Center"
+                Foreground="#1976D2"
+                Text="{Binding StatusMessage}" />
+        </StackPanel>
+
+        <!--  手工添加面板  -->
+        <Border
+            Grid.Row="2"
+            Width="400"
+            Margin="0,0,20,0"
+            Padding="20"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Background="White"
+            CornerRadius="8"
+            Visibility="{Binding IsAddingManual, Converter={StaticResource Boolean2VisibilityConverter}}">
+            <Border.Effect>
+                <DropShadowEffect
+                    BlurRadius="15"
+                    Opacity="0.15"
+                    ShadowDepth="3" />
+            </Border.Effect>
+            <StackPanel>
+                <TextBlock
+                    Margin="0,0,0,15"
+                    FontSize="18"
+                    FontWeight="Bold"
+                    Foreground="#1B95D9"
+                    Text="手工添加核心梗" />
+
+                <TextBlock
+                    Margin="0,0,0,5"
+                    Foreground="#666"
+                    Text="序号 (如【001】) *" />
+                <TextBox
+                    Margin="0,0,0,15"
+                    Style="{StaticResource TextBoxExtend}"
+                    Text="{Binding EditSerialNumber, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock
+                    Margin="0,0,0,5"
+                    Foreground="#666"
+                    Text="核心梗内容 *" />
+                <TextBox
+                    Height="150"
+                    Margin="0,0,0,15"
+                    AcceptsReturn="True"
+                    Style="{StaticResource TextBoxExtend}"
+                    Text="{Binding EditContent, UpdateSourceTrigger=PropertyChanged}"
+                    VerticalScrollBarVisibility="Auto" />
+
+                <StackPanel Orientation="Horizontal">
+                    <Button
+                        Margin="0,0,10,0"
+                        Command="{Binding SaveManualCoreCommand}"
+                        Content="保存"
+                        Style="{StaticResource ButtonPrimary}" />
+                    <Button
+                        Command="{Binding CancelManualAddCommand}"
+                        Content="取消"
+                        Style="{StaticResource ButtonDefault}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

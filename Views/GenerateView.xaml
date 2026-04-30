@@ -1,0 +1,235 @@
+<UserControl
+    x:Class="AINovel.Views.GenerateView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:hc="https://handyorg.github.io/handycontrol"
+    xmlns:conv="clr-namespace:AINovel.Converters">
+    <UserControl.Resources>
+        <conv:GenerateStatusConverter x:Key="GenerateStatusConverter"/>
+    </UserControl.Resources>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            Grid.Row="0"
+            Margin="0,0,0,15"
+            FontSize="24"
+            FontWeight="Bold"
+            Foreground="#1B95D9"
+            Text="生成管理" />
+
+        <!--  筛选工具栏  -->
+        <Border
+            Grid.Row="1"
+            Margin="0,0,0,15"
+            Padding="15"
+            Background="White"
+            CornerRadius="8">
+            <Border.Effect>
+                <DropShadowEffect
+                    BlurRadius="10"
+                    Opacity="0.1"
+                    ShadowDepth="2" />
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock
+                    Margin="0,0,10,0"
+                    VerticalAlignment="Center"
+                    Foreground="#666"
+                    Text="账号筛选:" />
+                <ComboBox
+                    Width="150"
+                    DisplayMemberPath="AccountName"
+                    ItemsSource="{Binding Accounts}"
+                    SelectedItem="{Binding FilterAccount}"
+                    Style="{StaticResource ComboBoxExtend}" />
+                <Button
+                    Margin="10,0,20,0"
+                    Command="{Binding RefreshCoresCommand}"
+                    Content="刷新"
+                    Style="{StaticResource ButtonDefault}" />
+
+                <TextBlock
+                    Margin="0,0,10,0"
+                    VerticalAlignment="Center"
+                    Foreground="#666"
+                    Text="状态筛选:" />
+                <ComboBox
+                    Width="120"
+                    ItemsSource="{Binding StatusFilters}"
+                    SelectedItem="{Binding FilterStatus}"
+                    Style="{StaticResource ComboBoxExtend}" />
+            </StackPanel>
+        </Border>
+
+        <!--  核心梗列表  -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Border
+                Grid.Column="0"
+                Margin="0,0,15,0"
+                Padding="15"
+                Background="White"
+                CornerRadius="8">
+                <Border.Effect>
+                    <DropShadowEffect
+                        BlurRadius="10"
+                        Opacity="0.1"
+                        ShadowDepth="2" />
+                </Border.Effect>
+                <DataGrid
+                    AutoGenerateColumns="False"
+                    BorderThickness="0"
+                    CanUserAddRows="False"
+                    GridLinesVisibility="Horizontal"
+                    HeadersVisibility="Column"
+                    ItemsSource="{Binding Cores}"
+                    SelectedItem="{Binding SelectedCore}"
+                    SelectionMode="Extended">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn
+                            Width="50"
+                            Binding="{Binding Id}"
+                            Header="ID"
+                            IsReadOnly="True" />
+                        <DataGridTextColumn
+                            Width="80"
+                            Binding="{Binding SerialNumber}"
+                            Header="序号"
+                            IsReadOnly="True" />
+                        <DataGridTextColumn
+                            Width="150"
+                            Binding="{Binding Content}"
+                            Header="内容"
+                            IsReadOnly="True" />
+                        <DataGridTextColumn
+                            Width="80"
+                            Binding="{Binding GenerateStatus, Converter={StaticResource GenerateStatusConverter}}"
+                            Header="状态"
+                            IsReadOnly="True" />
+                        <DataGridTextColumn
+                            Width="120"
+                            Binding="{Binding GenerateTime, StringFormat=yyyy-MM-dd HH:mm}"
+                            Header="生成时间"
+                            IsReadOnly="True" />
+                        <DataGridTextColumn
+                            Width="*"
+                            Binding="{Binding FailReason}"
+                            Header="失败原因"
+                            IsReadOnly="True" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+
+            <!--  详情面板  -->
+            <Border
+                Grid.Column="1"
+                Width="380"
+                Padding="20"
+                Background="White"
+                CornerRadius="8"
+                Visibility="{Binding HasSelectedContent, Converter={StaticResource Boolean2VisibilityConverter}}">
+                <Border.Effect>
+                    <DropShadowEffect
+                        BlurRadius="10"
+                        Opacity="0.1"
+                        ShadowDepth="2" />
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock
+                        Margin="0,0,0,15"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Foreground="#1B95D9"
+                        Text="生成内容" />
+                    <TextBox
+                        Height="400"
+                        AcceptsReturn="True"
+                        IsReadOnly="True"
+                        Style="{StaticResource TextBoxExtend}"
+                        Text="{Binding SelectedGenerateContent, Mode=OneWay}"
+                        TextWrapping="Wrap"
+                        VerticalScrollBarVisibility="Auto" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!--  操作按钮  -->
+        <Border
+            Grid.Row="3"
+            Margin="0,15,0,0"
+            Padding="15"
+            Background="White"
+            CornerRadius="8">
+            <Border.Effect>
+                <DropShadowEffect
+                    BlurRadius="10"
+                    Opacity="0.1"
+                    ShadowDepth="2" />
+            </Border.Effect>
+            <StackPanel Orientation="Horizontal">
+                <Button
+                    Margin="0,0,10,0"
+                    Command="{Binding ViewContentCommand}"
+                    Content="查看内容"
+                    Style="{StaticResource ButtonDefault}" />
+                <Button
+                    Margin="0,0,10,0"
+                    Command="{Binding GenerateCommand}"
+                    Content="生成"
+                    Style="{StaticResource ButtonPrimary}" />
+                <Button
+                    Margin="0,0,10,0"
+                    Command="{Binding RetryGenerateCommand}"
+                    Content="重试"
+                    Style="{StaticResource ButtonWarning}" />
+                <Button
+                    Margin="0,0,10,0"
+                    Command="{Binding PublishCommand}"
+                    Content="发布"
+                    Style="{StaticResource ButtonSuccess}" />
+                <Separator
+                    Width="1"
+                    Margin="10,0"
+                    Background="#E0E0E0" />
+                <Button
+                    Margin="0,0,10,0"
+                    Command="{Binding BatchGenerateCommand}"
+                    Content="批量生成"
+                    Style="{StaticResource ButtonPrimary}" />
+                <Button
+                    Margin="0,0,10,0"
+                    Command="{Binding BatchPublishCommand}"
+                    Content="批量发布"
+                    Style="{StaticResource ButtonSuccess}" />
+                <Button
+                    Margin="0,0,10,0"
+                    Command="{Binding BatchRetryCommand}"
+                    Content="批量重试"
+                    Style="{StaticResource ButtonWarning}" />
+                <Separator
+                    Width="1"
+                    Margin="10,0"
+                    Background="#E0E0E0" />
+                <Button
+                    Command="{Binding DeleteCoreCommand}"
+                    Content="删除"
+                    Style="{StaticResource ButtonDanger}" />
+                <TextBlock
+                    Margin="20,0,0,0"
+                    VerticalAlignment="Center"
+                    Foreground="#1976D9"
+                    Text="{Binding StatusMessage}" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

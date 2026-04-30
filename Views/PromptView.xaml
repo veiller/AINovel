@@ -1,0 +1,126 @@
+<UserControl x:Class="AINovel.Views.PromptView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hc="https://handyorg.github.io/handycontrol">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="提示词管理" FontSize="24" FontWeight="Bold" Foreground="#1B95D9" Margin="0,0,0,15"/>
+
+        <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}" Style="{StaticResource TabControlCapsule}">
+            <!-- 公共提示词标签页 -->
+            <TabItem Header="公共提示词">
+                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,15,0,0">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
+                            <Button Content="新增" Command="{Binding AddCommonPromptCommand}" Style="{StaticResource ButtonPrimary}" Margin="0,0,10,0"/>
+                            <Button Content="编辑" Command="{Binding EditCommonPromptCommand}" Style="{StaticResource ButtonDefault}" Margin="0,0,10,0"/>
+                            <Button Content="删除" Command="{Binding DeleteCommonPromptCommand}" Style="{StaticResource ButtonDanger}" Margin="0,0,10,0"/>
+                            <Button Content="复制到账号" Command="{Binding CopyToAccountCommand}" Style="{StaticResource ButtonSuccess}"/>
+                        </StackPanel>
+
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding CommonPrompts}" SelectedItem="{Binding SelectedCommonPrompt}"
+                                  AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                  BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="60"/>
+                                <DataGridTextColumn Header="标题" Binding="{Binding Title}" Width="200"/>
+                                <DataGridTextColumn Header="内容预览" Binding="{Binding Content}" Width="*"/>
+                                <DataGridTextColumn Header="创建时间" Binding="{Binding CreateTime, StringFormat=yyyy-MM-dd}" Width="120"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+            </TabItem>
+
+            <!-- 账号私有提示词标签页 -->
+            <TabItem Header="账号私有提示词">
+                <Border Background="White" CornerRadius="8" Padding="20" Margin="0,15,0,0">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
+                    </Border.Effect>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
+                            <TextBlock Text="选择账号:" VerticalAlignment="Center" Margin="0,0,10,0" Foreground="#666"/>
+                            <ComboBox Width="200" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}"
+                                      DisplayMemberPath="AccountName"/>
+                            <Button Content="新增" Command="{Binding AddAccountPromptCommand}" Style="{StaticResource ButtonPrimary}" Margin="20,0,10,0"/>
+                            <Button Content="编辑" Command="{Binding EditAccountPromptCommand}" Style="{StaticResource ButtonDefault}" Margin="0,0,10,0"/>
+                            <Button Content="删除" Command="{Binding DeleteAccountPromptCommand}" Style="{StaticResource ButtonDanger}" Margin="0,0,10,0"/>
+                            <Button Content="设为默认" Command="{Binding SetAsDefaultCommand}" Style="{StaticResource ButtonWarning}"/>
+                        </StackPanel>
+
+                        <DataGrid Grid.Row="1" ItemsSource="{Binding AccountPrompts}" SelectedItem="{Binding SelectedAccountPrompt}"
+                                  AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                  BorderThickness="0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="60"/>
+                                <DataGridTextColumn Header="标题" Binding="{Binding Title}" Width="200"/>
+                                <DataGridTemplateColumn Header="默认" Width="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="★" Foreground="#FFC107" FontSize="16" FontWeight="Bold"
+                                                       Visibility="{Binding IsDefault, Converter={StaticResource Boolean2VisibilityConverter}}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="内容预览" Binding="{Binding Content}" Width="*"/>
+                                <DataGridTextColumn Header="创建时间" Binding="{Binding CreateTime, StringFormat=yyyy-MM-dd}" Width="120"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+            </TabItem>
+        </TabControl>
+
+        <!-- 编辑面板 -->
+        <Border Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Right"
+                Width="450" Margin="0,80,20,0" Background="White" CornerRadius="8" Padding="20"
+                Visibility="{Binding IsEditing, Converter={StaticResource Boolean2VisibilityConverter}}">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="15" ShadowDepth="3" Opacity="0.15"/>
+            </Border.Effect>
+            <StackPanel>
+                <TextBlock Text="编辑提示词" FontSize="18" FontWeight="Bold" Foreground="#1B95D9" Margin="0,0,0,15"/>
+
+                <TextBlock Text="标题 *" Foreground="#666" Margin="0,0,0,5"/>
+                <TextBox Text="{Binding EditTitle, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource TextBoxExtend}" Margin="0,0,0,15"/>
+
+                <TextBlock Text="内容 *" Foreground="#666" Margin="0,0,0,5"/>
+                <TextBox Text="{Binding EditContent, UpdateSourceTrigger=PropertyChanged}"
+                         AcceptsReturn="True" Height="200" VerticalScrollBarVisibility="Auto"
+                         Style="{StaticResource TextBoxExtend}" Margin="0,0,0,15"/>
+
+                <CheckBox IsChecked="{Binding EditIsDefault}" Content="设为默认提示词" Margin="0,0,0,15"/>
+
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="保存" Command="{Binding SavePromptCommand}" Style="{StaticResource ButtonPrimary}" Margin="0,0,10,0"/>
+                    <Button Content="取消" Command="{Binding CancelEditCommand}" Style="{StaticResource ButtonDefault}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 状态提示 -->
+        <Border Grid.Row="1" Background="#E3F2FD" CornerRadius="4" Padding="10" Margin="0,15,20,0"
+                HorizontalAlignment="Right" VerticalAlignment="Top">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="#1976D2"/>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,97 @@
+<UserControl x:Class="AINovel.Views.HomeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:hc="https://handyorg.github.io/handycontrol">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20">
+            <TextBlock Text="系统概览" FontSize="24" FontWeight="Bold" Foreground="#1B95D9" Margin="0,0,0,20"/>
+
+            <!-- 统计卡片区 -->
+            <hc:Row Margin="0,0,0,15">
+                <hc:Col Span="3">
+                    <Border Background="#E3F2FD" CornerRadius="8" Padding="20">
+                        <StackPanel>
+                            <TextBlock Text="账号总数" Foreground="#1976D2" FontSize="14"/>
+                            <TextBlock Text="{Binding TotalAccounts}" FontSize="36" FontWeight="Bold" Foreground="#1976D2"/>
+                        </StackPanel>
+                    </Border>
+                </hc:Col>
+                <hc:Col Span="3">
+                    <Border Background="#E8F5E9" CornerRadius="8" Padding="20">
+                        <StackPanel>
+                            <TextBlock Text="核心梗总数" Foreground="#388E3C" FontSize="14"/>
+                            <TextBlock Text="{Binding TotalCores}" FontSize="36" FontWeight="Bold" Foreground="#388E3C"/>
+                        </StackPanel>
+                    </Border>
+                </hc:Col>
+                <hc:Col Span="3">
+                    <Border Background="#FFF3E0" CornerRadius="8" Padding="20">
+                        <StackPanel>
+                            <TextBlock Text="已生成" Foreground="#F57C00" FontSize="14"/>
+                            <TextBlock Text="{Binding TotalGenerated}" FontSize="36" FontWeight="Bold" Foreground="#F57C00"/>
+                        </StackPanel>
+                    </Border>
+                </hc:Col>
+                <hc:Col Span="3">
+                    <Border Background="#FCE4EC" CornerRadius="8" Padding="20">
+                        <StackPanel>
+                            <TextBlock Text="待生成" Foreground="#C2185B" FontSize="14"/>
+                            <TextBlock Text="{Binding TotalPending}" FontSize="36" FontWeight="Bold" Foreground="#C2185B"/>
+                        </StackPanel>
+                    </Border>
+                </hc:Col>
+            </hc:Row>
+
+            <!-- 运行状态 -->
+            <Border Background="White" CornerRadius="8" Padding="20" Margin="0,0,0,15">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="运行状态" FontSize="18" FontWeight="Bold" Foreground="#333" Margin="0,0,0,15"/>
+
+                    <hc:Row Margin="0,0,0,15">
+                        <hc:Col Span="4">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="12" Height="12" Fill="#4CAF50" Margin="0,0,8,0"/>
+                                <TextBlock Text="线程状态: " VerticalAlignment="Center" Foreground="#666"/>
+                                <TextBlock Text="{Binding ThreadStatus}" FontWeight="Bold" VerticalAlignment="Center" Foreground="#1B95D9"/>
+                            </StackPanel>
+                        </hc:Col>
+                        <hc:Col Span="4">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="12" Height="12" Fill="#4CAF50" Margin="0,0,8,0"/>
+                                <TextBlock Text="API状态: " VerticalAlignment="Center" Foreground="#666"/>
+                                <TextBlock Text="{Binding ApiStatus}" FontWeight="Bold" VerticalAlignment="Center" Foreground="#1B95D9"/>
+                            </StackPanel>
+                        </hc:Col>
+                    </hc:Row>
+
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="启动自动生成" Command="{Binding StartAutoGenerationCommand}"
+                                Style="{StaticResource ButtonPrimary}" Margin="0,0,10,0"/>
+                        <Button Content="停止自动生成" Command="{Binding StopAutoGenerationCommand}"
+                                Style="{StaticResource ButtonDanger}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 快捷操作 -->
+            <Border Background="White" CornerRadius="8" Padding="20">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="快捷操作" FontSize="18" FontWeight="Bold" Foreground="#333" Margin="0,0,0,15"/>
+                    <WrapPanel>
+                        <Button Content="账号管理" Style="{StaticResource ButtonPrimary}" Margin="0,0,10,10" Click="NavigateToAccount"/>
+                        <Button Content="提示词管理" Style="{StaticResource ButtonPrimary}" Margin="0,0,10,10" Click="NavigateToPrompt"/>
+                        <Button Content="文件上传" Style="{StaticResource ButtonPrimary}" Margin="0,0,10,10" Click="NavigateToUpload"/>
+                        <Button Content="生成管理" Style="{StaticResource ButtonPrimary}" Margin="0,0,10,10" Click="NavigateToGenerate"/>
+                        <Button Content="系统配置" Style="{StaticResource ButtonPrimary}" Margin="0,0,10,10" Click="NavigateToConfig"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
