@@ -69,9 +69,9 @@ public class NovelCore
     /// <summary>
     /// 生成方式: 0=自动生成, 1=手工生成
     /// </summary>
-    public int GenerateType { get; set; } = -1;
+    public int GenerateType { get; set; } = 0;
     [SugarColumn(IsNullable = true)]
-    public int? PromptId { get; set; } = 0;
+    public int? PromptId { get; set; }
     /// <summary>
     /// 生成进度 0-100
     /// </summary>
@@ -112,5 +112,6 @@ public class SystemConfig
     public string BackupPath { get; set; } = "Backup";
     public int BackupRetentionDays { get; set; } = 7;
     public string GptModel { get; set; } = "gpt-3.5-turbo";
+    public double GptTemperature { get; set; } = 0.7;
     public DateTime UpdateTime { get; set; } = DateTime.Now;
 }

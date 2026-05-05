@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using AINovel.Models;
@@ -105,7 +106,6 @@ public partial class CpViewModel : ViewModelBase
 
     partial void OnEditPromptTypeChanged(int value)
     {
-        // 切换提示词类型时清空选择
         SelectedCommonPrompt = null;
         SelectedAccountPrompt = null;
     }
@@ -139,7 +139,6 @@ public partial class CpViewModel : ViewModelBase
 
         if (SelectedCp.PromptId != null)
         {
-            // 尝试在公共提示词中找到
             var commonPrompt = CommonPrompts.FirstOrDefault(x => x.Id == SelectedCp.PromptId);
             if (commonPrompt != null)
             {
@@ -217,6 +216,15 @@ public partial class CpViewModel : ViewModelBase
     private void DeleteCp()
     {
         if (SelectedCp == null) return;
+
+        var result = MessageBox.Show(
+            $"确定要删除CP「{SelectedCp.Name}」吗？",
+            "确认删除",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes) return;
+
         DbHelper.Db.Deleteable<CreativeProject>()
             .Where(x => x.Id == SelectedCp.Id)
             .ExecuteCommand();

@@ -29,6 +29,11 @@
                              Style="{StaticResource TextBoxExtend}"
                              hc:InfoElement.Placeholder="如: gpt-3.5-turbo"/>
 
+                    <TextBlock Text="Temperature" Foreground="#666" Margin="0,15,0,5"/>
+                    <hc:NumericUpDown Value="{Binding GptTemperature}" Minimum="0" Maximum="2" Increment="0.1"
+                                      Style="{StaticResource NumericUpDownExtend}"/>
+                    <TextBlock Text="控制生成内容的随机性（0-2）" Foreground="#999" FontSize="12" Margin="0,5,0,0"/>
+
                     <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
                         <Button Content="测试连接" Command="{Binding TestConnectionCommand}"
                                 Style="{StaticResource ButtonPrimary}"/>

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using AINovel.Models;
@@ -195,6 +196,15 @@ public partial class PromptViewModel : ViewModelBase
     private void DeleteCommonPrompt()
     {
         if (SelectedCommonPrompt == null) return;
+
+        var result = MessageBox.Show(
+            $"确定要删除公共提示词「{SelectedCommonPrompt.Title}」吗？",
+            "确认删除",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes) return;
+
         DbHelper.Db.Deleteable<CommonPrompt>()
             .Where(x => x.Id == SelectedCommonPrompt.Id)
             .ExecuteCommand();
@@ -254,6 +264,15 @@ public partial class PromptViewModel : ViewModelBase
     private void DeleteAccountPrompt()
     {
         if (SelectedAccountPrompt == null) return;
+
+        var result = MessageBox.Show(
+            $"确定要删除私有提示词「{SelectedAccountPrompt.Title}」吗？",
+            "确认删除",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes) return;
+
         DbHelper.Db.Deleteable<AccountPrompt>()
             .Where(x => x.Id == SelectedAccountPrompt.Id)
             .ExecuteCommand();

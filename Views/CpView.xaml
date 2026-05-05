@@ -120,7 +120,8 @@
 
         <!-- 状态提示 -->
         <Border Grid.Row="1" Background="#E3F2FD" CornerRadius="4" Padding="10" Margin="0,15,20,0"
-                HorizontalAlignment="Right" VerticalAlignment="Top">
+                HorizontalAlignment="Right" VerticalAlignment="Top"
+                Visibility="{Binding StatusMessage, Converter={StaticResource String2VisibilityConverter}}">
             <TextBlock Text="{Binding StatusMessage}" Foreground="#1976D2"/>
         </Border>
     </Grid>

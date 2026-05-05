@@ -28,19 +28,23 @@ public class DbHelper
         _db.CodeFirst.InitTables<CreativeProject>();
         _db.CodeFirst.InitTables<SystemConfig>();
 
+        // 启用 WAL 模式提升多线程并发性能
+        _db.Ado.ExecuteCommand("PRAGMA journal_mode=WAL;");
+
         // 初始化默认系统配置
         InitDefaultConfig();
     }
 
     private static void InitDefaultConfig()
     {
-        var config = _db.Queryable<SystemConfig>().First();
-        if (config == null)
+        if (!Db.Queryable<SystemConfig>().Any())
         {
-            _db.Insertable(new SystemConfig
+            Db.Insertable(new SystemConfig
             {
                 GptApiUrl = "https://api.openai.com/v1/chat/completions",
                 GptApiKey = "",
+                GptModel = "gpt-3.5-turbo",
+                GptTemperature = 0.7,
                 MaxThreadCount = 2,
                 MinWaitGenerateCount = 3,
                 ApiTimeout = 30,
@@ -52,19 +56,21 @@ public class DbHelper
         }
     }
 
+    /// <summary>
+    /// 关闭并重置数据库连接（用于备份恢复前释放文件锁）
+    /// </summary>
+    public static void CloseConnection()
+    {
+        _db?.Dispose();
+        _db = null;
+    }
+
     public static void ResetGeneratingToWait()
     {
-        var list = _db.Queryable<NovelCore>()
+        _db!.Updateable<NovelCore>()
+            .SetColumns(x => x.GenerateStatus == 0)
+            .SetColumns(x => x.FailReason == "程序异常中断")
             .Where(x => x.GenerateStatus == 1)
-            .ToList();
-
-        foreach (var item in list)
-        {
-            _db.Updateable<NovelCore>()
-                .SetColumns(x => x.GenerateStatus == 0)
-                .SetColumns(x => x.FailReason == "程序异常中断")
-                .Where(x => x.Id == item.Id)
-                .ExecuteCommand();
-        }
+            .ExecuteCommand();
     }
 }

@@ -43,7 +43,20 @@
                     <DataGridTemplateColumn Header="状态" Width="80">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding IsEnable, Converter={x:Null}}" FontWeight="Bold"/>
+                                <TextBlock FontWeight="Bold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="禁用"/>
+                                            <Setter Property="Foreground" Value="#F44336"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnable}" Value="True">
+                                                    <Setter Property="Text" Value="启用"/>
+                                                    <Setter Property="Foreground" Value="#4CAF50"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -56,8 +69,19 @@
                                             Style="{StaticResource ButtonDefault}" Margin="0,0,5,0" Padding="10,5"/>
                                     <Button Content="删除" Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                             Style="{StaticResource ButtonDanger}" Margin="0,0,5,0" Padding="10,5"/>
-                                    <Button Content="{Binding IsEnable, Converter={x:Null}}" Command="{Binding DataContext.ToggleEnableCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                            Style="{StaticResource ButtonWarning}" Padding="10,5"/>
+                                    <Button Command="{Binding DataContext.ToggleEnableCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            Padding="10,5">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource ButtonWarning}">
+                                                <Setter Property="Content" Value="禁用"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnable}" Value="False">
+                                                        <Setter Property="Content" Value="启用"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -73,8 +97,18 @@
                 <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
             </Border.Effect>
             <StackPanel>
-                <TextBlock Text="{Binding SelectedAccount, Converter={x:Null}, ConverterParameter=编辑账号|新增账号}"
-                           FontSize="18" FontWeight="Bold" Foreground="#1B95D9" Margin="0,0,0,15"/>
+                <TextBlock FontSize="18" FontWeight="Bold" Foreground="#1B95D9" Margin="0,0,0,15">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="编辑账号"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedAccount}" Value="{x:Null}">
+                                    <Setter Property="Text" Value="新增账号"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
 
                 <hc:Row Margin="0,0,0,15">
                     <hc:Col Span="8">

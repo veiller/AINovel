@@ -46,23 +46,8 @@ public partial class HomeViewModel : ViewModelBase
             .Where(x => x.GenerateStatus == 0)
             .Count();
 
-        if (!string.IsNullOrEmpty(_config.GptApiKey))
-        {
-            ApiStatus = "已配置";
-        }
-    }
-
-    [RelayCommand]
-    private void StartAutoGeneration()
-    {
-        ThreadStatus = "运行中";
-        GenerationService.Instance.StartAutoGeneration();
-    }
-
-    [RelayCommand]
-    private void StopAutoGeneration()
-    {
-        ThreadStatus = "停止";
-        GenerationService.Instance.Stop();
+        // 实时读取配置状态（配置可能在其他页面被修改）
+        var currentConfig = DbHelper.Db.Queryable<SystemConfig>().First();
+        ApiStatus = !string.IsNullOrEmpty(currentConfig?.GptApiKey) ? "已配置" : "未配置";
     }
 }

@@ -17,6 +17,9 @@ public partial class ConfigViewModel : ViewModelBase
     private string _gptModel = "gpt-3.5-turbo";
 
     [ObservableProperty]
+    private double _gptTemperature = 0.7;
+
+    [ObservableProperty]
     private int _maxThreadCount = 2;
 
     [ObservableProperty]
@@ -44,6 +47,7 @@ public partial class ConfigViewModel : ViewModelBase
         GptApiUrl = config.GptApiUrl;
         GptApiKey = config.GptApiKey;
         GptModel = config.GptModel;
+        GptTemperature = config.GptTemperature;
         MaxThreadCount = config.MaxThreadCount;
         MinWaitGenerateCount = config.MinWaitGenerateCount;
         ApiTimeout = config.ApiTimeout;
@@ -55,6 +59,7 @@ public partial class ConfigViewModel : ViewModelBase
         _config.GptApiUrl = GptApiUrl;
         _config.GptApiKey = GptApiKey;
         _config.GptModel = GptModel;
+        _config.GptTemperature = GptTemperature;
         _config.MaxThreadCount = MaxThreadCount;
         _config.MinWaitGenerateCount = MinWaitGenerateCount;
         _config.ApiTimeout = ApiTimeout;

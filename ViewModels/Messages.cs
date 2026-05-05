@@ -11,13 +11,3 @@ public class GenerationFailedMessage : ValueChangedMessage<(int AccountId, int C
 {
     public GenerationFailedMessage((int, int, string) value) : base(value) { }
 }
-
-public class ProgressChangedMessage : ValueChangedMessage<(int AccountId, int CoreId, int Progress)>
-{
-    public ProgressChangedMessage((int, int, int) value) : base(value) { }
-}
-
-public class StatusUpdateMessage : ValueChangedMessage<string>
-{
-    public StatusUpdateMessage(string status) : base(status) { }
-}

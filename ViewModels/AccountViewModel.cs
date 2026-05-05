@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using AINovel.Models;
@@ -87,7 +88,6 @@ public partial class AccountViewModel : ViewModelBase
 
         if (SelectedAccount == null)
         {
-            // 新增
             var newAccount = new UserAccount
             {
                 AccountName = EditAccountName,
@@ -100,7 +100,6 @@ public partial class AccountViewModel : ViewModelBase
         }
         else
         {
-            // 更新
             DbHelper.Db.Updateable<UserAccount>()
                 .SetColumns(x => x.AccountName == EditAccountName)
                 .SetColumns(x => x.Remark == EditRemark)
@@ -125,11 +124,25 @@ public partial class AccountViewModel : ViewModelBase
     {
         if (SelectedAccount == null) return;
 
+        var result = MessageBox.Show(
+            $"确定要删除账号「{SelectedAccount.AccountName}」吗？\n关联的私有提示词、核心梗和CP将一并删除。",
+            "确认删除",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes) return;
+
+        var accountId = SelectedAccount.Id;
+
+        DbHelper.Db.Deleteable<AccountPrompt>().Where(x => x.AccountId == accountId).ExecuteCommand();
+        DbHelper.Db.Deleteable<NovelCore>().Where(x => x.AccountId == accountId).ExecuteCommand();
+        DbHelper.Db.Deleteable<CreativeProject>().Where(x => x.AccountId == accountId).ExecuteCommand();
+
         DbHelper.Db.Deleteable<UserAccount>()
-            .Where(x => x.Id == SelectedAccount.Id)
+            .Where(x => x.Id == accountId)
             .ExecuteCommand();
 
-        StatusMessage = "账号删除成功";
+        StatusMessage = "账号及关联数据删除成功";
         LoadAccounts();
     }
 

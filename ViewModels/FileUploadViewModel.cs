@@ -89,17 +89,23 @@ public partial class FileUploadViewModel : ViewModelBase
         }
     }
 
-    private void ParseFile()
+    private async void ParseFile()
     {
         if (string.IsNullOrEmpty(FilePath) || SelectedAccount == null) return;
 
+        var filePath = FilePath;
+        StatusMessage = "正在解析文件...";
+
         try
         {
-            var cores = FileParser.ParseFile(FilePath);
+            var cores = await Task.Run(() => FileParser.ParseFile(filePath));
+
             PreviewCores = new ObservableCollection<CorePreviewItem>(
                 cores.Select(c => new CorePreviewItem { SerialNumber = c.SerialNumber, Content = c.Content }));
             HasPreview = cores.Count > 0;
-            StatusMessage = $"成功解析 {cores.Count} 个核心梗";
+            StatusMessage = HasPreview
+                ? $"成功解析 {cores.Count} 个核心梗"
+                : "文件中未找到核心梗，请检查格式（【数字】）";
         }
         catch (Exception ex)
         {
@@ -123,24 +129,54 @@ public partial class FileUploadViewModel : ViewModelBase
             return;
         }
 
+        var accountId = SelectedAccount.Id;
+        var cpId = SelectedCp?.Id;
+
+        // 查询已有序号，避免重复
+        var existingSerials = DbHelper.Db.Queryable<NovelCore>()
+            .Where(x => x.AccountId == accountId)
+            .Select(x => x.SerialNumber)
+            .ToList();
+
+        var coresToInsert = new List<NovelCore>();
+        var duplicateCount = 0;
+
         foreach (var item in PreviewCores)
         {
-            var core = new NovelCore
+            if (existingSerials.Contains(item.SerialNumber))
             {
-                AccountId = SelectedAccount.Id,
+                duplicateCount++;
+                continue;
+            }
+
+            coresToInsert.Add(new NovelCore
+            {
+                AccountId = accountId,
                 SerialNumber = item.SerialNumber,
                 Content = item.Content,
-                GenerateContent = string.Empty,
                 GenerateStatus = 0,
                 CreateTime = DateTime.Now,
-                GenerateTime = DateTime.Now,
                 GenerateProgress = 0,
-                CpId = SelectedCp?.Id
-            };
-            DbHelper.Db.Insertable(core).ExecuteCommand();
+                CpId = cpId
+            });
         }
 
-        StatusMessage = $"已保存 {PreviewCores.Count} 个核心梗到账号 {SelectedAccount.AccountName}";
+        if (coresToInsert.Count == 0)
+        {
+            StatusMessage = "所有核心梗均已存在，无新数据保存";
+            return;
+        }
+
+        // 批量插入
+        DbHelper.Db.Insertable(coresToInsert).ExecuteCommand();
+
+        var msg = $"已保存 {coresToInsert.Count} 个核心梗到账号 {SelectedAccount.AccountName}";
+        if (duplicateCount > 0)
+        {
+            msg += $"，{duplicateCount} 个重复序号已跳过";
+        }
+
+        StatusMessage = msg;
         PreviewCores.Clear();
         HasPreview = false;
         FilePath = string.Empty;
@@ -181,12 +217,21 @@ public partial class FileUploadViewModel : ViewModelBase
             return;
         }
 
+        // 检查重复序号
+        var exists = DbHelper.Db.Queryable<NovelCore>()
+            .Any(x => x.AccountId == SelectedAccount.Id && x.SerialNumber == EditSerialNumber);
+
+        if (exists)
+        {
+            StatusMessage = $"序号 {EditSerialNumber} 已存在，请使用其他序号";
+            return;
+        }
+
         var core = new NovelCore
         {
             AccountId = SelectedAccount.Id,
             SerialNumber = EditSerialNumber,
             Content = EditContent,
-            GenerateContent = string.Empty,
             GenerateStatus = 0,
             CreateTime = DateTime.Now,
             GenerateProgress = 0,

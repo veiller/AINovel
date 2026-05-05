@@ -12,7 +12,7 @@ public class GenerationService
     public static GenerationService Instance => _instance.Value;
 
     private readonly GptService _gptService;
-    private readonly Channel<GenerationRequest> _channel;
+    private Channel<GenerationRequest> _channel;
     private CancellationTokenSource _autoLoopCts;
     private readonly List<Task> _workers;
     private volatile int _targetWorkerCount;
@@ -20,7 +20,6 @@ public class GenerationService
     private readonly object _workerLock = new();
     private bool _isRunning;
 
-    public event Action<int, int, int>? ProgressChanged;
     public event Action<int, int, string>? GenerationCompleted;
     public event Action<int, int, string>? GenerationFailed;
 
@@ -30,8 +29,12 @@ public class GenerationService
         _autoLoopCts = new CancellationTokenSource();
         _workers = new List<Task>();
         _targetWorkerCount = 2;
+        _channel = CreateChannel();
+    }
 
-        _channel = Channel.CreateUnbounded<GenerationRequest>(new UnboundedChannelOptions
+    private static Channel<GenerationRequest> CreateChannel()
+    {
+        return Channel.CreateUnbounded<GenerationRequest>(new UnboundedChannelOptions
         {
             SingleReader = false,
             SingleWriter = false
@@ -75,6 +78,11 @@ public class GenerationService
         _autoLoopCts.Cancel();
         _autoLoopCts = new CancellationTokenSource();
 
+        if (_channel.Reader.Completion.IsCompleted)
+        {
+            _channel = CreateChannel();
+        }
+
         Task.Run(() => AutoGenerationLoopAsync());
     }
 
@@ -83,8 +91,12 @@ public class GenerationService
         _isRunning = false;
         _autoLoopCts.Cancel();
 
-        // 清空通道中等待的请求（不取消正在执行的 worker）
-        while (_channel.Reader.TryRead(out _)) { }
+        _channel.Writer.TryComplete();
+
+        lock (_workerLock)
+        {
+            _currentWorkerCount = 0;
+        }
     }
 
     // ========== Worker 管理 ==========
@@ -93,7 +105,17 @@ public class GenerationService
     {
         if (_currentWorkerCount == 0)
         {
-            AdjustWorkers();
+            lock (_workerLock)
+            {
+                if (_currentWorkerCount == 0)
+                {
+                    if (_channel.Reader.Completion.IsCompleted)
+                    {
+                        _channel = CreateChannel();
+                    }
+                    AdjustWorkers();
+                }
+            }
         }
     }
 
@@ -124,6 +146,10 @@ public class GenerationService
             {
                 break;
             }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
         }
 
         lock (_workerLock)
@@ -142,25 +168,22 @@ public class GenerationService
 
         try
         {
-            // 更新状态为生成中
             await DbHelper.Db.Updateable<NovelCore>()
                 .SetColumns(x => x.GenerateStatus == 1)
                 .SetColumns(x => x.GenerateProgress == 0)
                 .Where(x => x.Id == core.Id)
                 .ExecuteCommandAsync();
 
-            // 获取提示词
             var prompt = GetPrompt(core);
 
-            // 调用GPT生成
             var content = await _gptService.GenerateAsync(
                 config.GptApiUrl,
                 config.GptApiKey,
                 prompt,
                 config.GptModel,
+                config.GptTemperature,
                 config.ApiTimeout);
 
-            // 更新生成完成
             DbHelper.Db.Updateable<NovelCore>()
                 .SetColumns(x => x.GenerateStatus == 2)
                 .SetColumns(x => x.GenerateContent == content)
@@ -207,12 +230,13 @@ public class GenerationService
                         .Where(x => x.AccountId == account.Id && x.GenerateStatus == 0)
                         .Count();
 
-                    if (waitCount < config.MinWaitGenerateCount && waitCount > 0)
+                    if (waitCount < config.MinWaitGenerateCount)
                     {
+                        var takeCount = config.MinWaitGenerateCount - waitCount;
                         var cores = DbHelper.Db.Queryable<NovelCore>()
                             .Where(x => x.AccountId == account.Id && x.GenerateStatus == 0)
                             .OrderBy(x => x.CreateTime)
-                            .Take(1)
+                            .Take(takeCount)
                             .ToList();
 
                         foreach (var core in cores)
@@ -236,7 +260,6 @@ public class GenerationService
 
     private static string GetPrompt(NovelCore core)
     {
-        // 通过 CP 获取提示词
         if (core.CpId.HasValue)
         {
             var cp = DbHelper.Db.Queryable<CreativeProject>()
@@ -259,7 +282,6 @@ public class GenerationService
             }
         }
 
-        // 回退
         return $"请根据以下核心梗生成小说:\n\n{core.Content}";
     }
 }

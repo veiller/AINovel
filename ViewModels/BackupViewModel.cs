@@ -117,6 +117,8 @@ public partial class BackupViewModel : ViewModelBase
             var dbPath = DbHelper.Db.CurrentConnectionConfig.ConnectionString;
             dbPath = dbPath.Replace("Data Source=", "");
 
+            // 释放数据库连接后再复制，避免文件锁定
+            DbHelper.CloseConnection();
             File.Copy(SelectedBackupFile, dbPath, true);
 
             StatusMessage = "恢复成功，请重启程序";
