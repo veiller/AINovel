@@ -25,7 +25,7 @@ public partial class MainViewModel : ViewModelBase
 
     private static readonly HashSet<string> _cachedModules = new()
     {
-        "账号管理", "提示词管理", "CP管理", "系统配置", "数据库备份"
+        "账号管理", "系统配置", "数据库备份"
     };
 
     public ObservableCollection<string> NavigationItems { get; } = new()
