@@ -8,7 +8,8 @@ namespace AINovel.Services;
 
 public class GptService
 {
-    private static readonly HttpClient _httpClient = new();
+    // 超时由每个请求的 CancellationTokenSource 单独控制，HttpClient 本身不做超时限制
+    private static readonly HttpClient _httpClient = new() { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
     private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public async Task<string> GenerateAsync(string apiUrl, string apiKey, string prompt, string model = "gpt-3.5-turbo", double temperature = 0.7, int timeoutSeconds = 120, CancellationToken cancellationToken = default)
@@ -31,7 +32,14 @@ public class GptService
         }
 
         // 最后一次尝试，失败直接向上抛
-        return await GenerateOnceAsync(apiUrl, apiKey, prompt, model, temperature, timeoutSeconds, cancellationToken);
+        try
+        {
+            return await GenerateOnceAsync(apiUrl, apiKey, prompt, model, temperature, timeoutSeconds, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw new TimeoutException($"GPT API 请求超时（{timeoutSeconds}秒），请检查网络或增大超时时间设置");
+        }
     }
 
     private static bool IsRetryable(Exception ex) => ex switch
