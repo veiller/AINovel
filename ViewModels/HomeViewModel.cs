@@ -50,4 +50,18 @@ public partial class HomeViewModel : ViewModelBase
         var currentConfig = DbHelper.Db.Queryable<SystemConfig>().First();
         ApiStatus = !string.IsNullOrEmpty(currentConfig?.GptApiKey) ? "已配置" : "未配置";
     }
+
+    [RelayCommand]
+    private void StartAutoGeneration()
+    {
+        ThreadStatus = "运行中";
+        GenerationService.Instance.StartAutoGeneration();
+    }
+
+    [RelayCommand]
+    private void StopAutoGeneration()
+    {
+        ThreadStatus = "停止";
+        GenerationService.Instance.Stop();
+    }
 }
