@@ -131,7 +131,7 @@ public partial class GenerateViewModel : ViewModelBase
     partial void OnFilterAccountChanged(UserAccount? value) => RefreshCores();
     partial void OnFilterStatusChanged(string value) => RefreshCores();
 
-    // 选中行时自动显示内容，无需手动点击"查看内容"
+    // 选中行时自动显示内容
     partial void OnSelectedCoreChanged(NovelCore? value)
     {
         if (value != null)
@@ -139,6 +139,14 @@ public partial class GenerateViewModel : ViewModelBase
             SelectedGenerateContent = value.GenerateContent ?? string.Empty;
             HasSelectedContent = !string.IsNullOrEmpty(SelectedGenerateContent);
         }
+    }
+
+    [RelayCommand]
+    private void ViewContent()
+    {
+        if (SelectedCore == null) return;
+        SelectedGenerateContent = SelectedCore.GenerateContent ?? string.Empty;
+        HasSelectedContent = !string.IsNullOrEmpty(SelectedGenerateContent);
     }
 
     [RelayCommand]
