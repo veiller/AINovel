@@ -149,12 +149,28 @@
                         ShadowDepth="2" />
                 </Border.Effect>
                 <StackPanel>
-                    <TextBlock
-                        Margin="0,0,0,10"
-                        FontSize="18"
-                        FontWeight="Bold"
-                        Foreground="#1B95D9"
-                        Text="生成内容" />
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            Grid.Column="0"
+                            FontSize="18"
+                            FontWeight="Bold"
+                            Foreground="#1B95D9"
+                            Text="生成内容" />
+                        <TextBlock
+                            Grid.Column="2"
+                            VerticalAlignment="Center"
+                            Foreground="#999"
+                            FontSize="13">
+                            <Run Text="共 " />
+                            <Run Text="{Binding ContentWordCount}" FontWeight="Bold" Foreground="#666" />
+                            <Run Text=" 字" />
+                        </TextBlock>
+                    </Grid>
                     <Border
                         Height="400"
                         BorderBrush="#E0E0E0"
@@ -215,24 +231,6 @@
                     Command="{Binding PublishCommand}"
                     Content="发布"
                     Style="{StaticResource ButtonSuccess}" />
-                <Separator
-                    Width="1"
-                    Margin="10,0"
-                    Background="#E0E0E0" />
-                <Button
-                    Margin="0,0,10,0"
-                    Command="{Binding BatchGenerateCommand}"
-                    Content="批量生成"
-                    Style="{StaticResource ButtonPrimary}" />
-                <Button
-                    Margin="0,0,10,0"
-                    Command="{Binding BatchPublishCommand}"
-                    Content="批量发布"
-                    Style="{StaticResource ButtonSuccess}" />
-                <Separator
-                    Width="1"
-                    Margin="10,0"
-                    Background="#E0E0E0" />
                 <Button
                     Command="{Binding DeleteCoreCommand}"
                     Content="删除"

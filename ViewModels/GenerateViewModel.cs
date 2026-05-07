@@ -23,9 +23,12 @@ public partial class GenerateViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GenerateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PublishCommand))]
     private NovelCore? _selectedCore;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(GenerateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PublishCommand))]
     private IList _selectedCores = new ArrayList();
 
     [ObservableProperty]
@@ -45,6 +48,9 @@ public partial class GenerateViewModel : ViewModelBase
 
     [ObservableProperty]
     private int _selectedCount;
+
+    [ObservableProperty]
+    private int _contentWordCount;
 
     public ObservableCollection<string> StatusFilters { get; } = new()
     {
@@ -183,12 +189,14 @@ public partial class GenerateViewModel : ViewModelBase
             SelectedGenerateContent = value.GenerateContent ?? string.Empty;
             SelectedGenerateHtml = MarkdownHelper.ToHtml(SelectedGenerateContent);
             HasSelectedContent = !string.IsNullOrEmpty(SelectedGenerateContent);
+            ContentWordCount = GetWordCount(SelectedGenerateContent);
         }
         else
         {
             SelectedGenerateContent = string.Empty;
             SelectedGenerateHtml = string.Empty;
             HasSelectedContent = false;
+            ContentWordCount = 0;
         }
     }
 
@@ -199,6 +207,13 @@ public partial class GenerateViewModel : ViewModelBase
         SelectedGenerateContent = SelectedCore.GenerateContent ?? string.Empty;
         SelectedGenerateHtml = MarkdownHelper.ToHtml(SelectedGenerateContent);
         HasSelectedContent = !string.IsNullOrEmpty(SelectedGenerateContent);
+        ContentWordCount = GetWordCount(SelectedGenerateContent);
+    }
+
+    private static int GetWordCount(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return 0;
+        return text.Count(c => !char.IsWhiteSpace(c));
     }
 
     [RelayCommand(CanExecute = nameof(CanGenerate))]
@@ -254,67 +269,34 @@ public partial class GenerateViewModel : ViewModelBase
         window.ShowDialog();
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanPublish))]
     private void Publish()
     {
-        if (SelectedCore == null) return;
+        var cores = SelectedCores?.Cast<NovelCore>()
+            .Where(x => x.GenerateStatus == 2)
+            .ToList();
 
-        DbHelper.Db.Updateable<NovelCore>()
-            .SetColumns(x => x.GenerateStatus == 4)
-            .SetColumns(x => x.PublishTime == DateTime.Now)
-            .SetColumns(x => x.Operator == "系统用户")
-            .Where(x => x.Id == SelectedCore.Id)
-            .ExecuteCommand();
-
-        StatusMessage = $"核心梗【{SelectedCore.SerialNumber}】已发布";
-        RefreshCores();
-    }
-
-    [RelayCommand]
-    private void BatchGenerate()
-    {
-        var pendingCores = Cores.Where(x => x.GenerateStatus == 0 || x.GenerateStatus == 2).ToList();
-        if (!pendingCores.Any())
+        if (cores == null || cores.Count == 0)
         {
-            StatusMessage = "当前列表中没有可生成的核心梗（待生成或已生成状态）";
+            StatusMessage = "选中的核心梗中没有可发布的（需要已生成状态）";
             return;
         }
 
-        GenerationService.Instance.EnqueueBatch(pendingCores, 1);
-        foreach (var core in pendingCores)
-        {
-            core.GenerateStatus = 5;
-            core.GenerateTime = null;
-            core.FailReason = "";
-            RefreshCoreInGrid(core);
-        }
-        StatusMessage = $"已加入 {pendingCores.Count} 个生成任务";
-    }
-
-    [RelayCommand]
-    private void BatchPublish()
-    {
-        var generatedCores = Cores.Where(x => x.GenerateStatus == 2).ToList();
-        if (!generatedCores.Any())
-        {
-            StatusMessage = "当前列表中没有已生成的核心梗";
-            return;
-        }
-
-        var count = 0;
-        foreach (var core in generatedCores)
+        foreach (var core in cores)
         {
             DbHelper.Db.Updateable<NovelCore>()
                 .SetColumns(x => x.GenerateStatus == 4)
                 .SetColumns(x => x.PublishTime == DateTime.Now)
+                .SetColumns(x => x.Operator == "系统用户")
                 .Where(x => x.Id == core.Id)
                 .ExecuteCommand();
-            count++;
         }
 
-        StatusMessage = $"已发布 {count} 个核心梗";
+        StatusMessage = $"已发布 {cores.Count} 个核心梗";
         RefreshCores();
     }
+
+    private bool CanPublish() => SelectedCore != null || (SelectedCores?.Count > 0);
 
     [RelayCommand]
     private void DeleteCore()

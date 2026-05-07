@@ -11,7 +11,7 @@ public class GptService
     // 超时由每个请求的 CancellationTokenSource 单独控制，HttpClient 本身不做超时限制
     private static readonly HttpClient _httpClient = new() { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
 
-    public async Task<string> GenerateAsync(string apiUrl, string apiKey, string prompt, string model = "gpt-3.5-turbo", double temperature = 0.7, int timeoutSeconds = 120, CancellationToken cancellationToken = default)
+    public async Task<string> GenerateAsync(string apiUrl, string apiKey, string prompt, string model = "gpt-3.5-turbo", int timeoutSeconds = 120, CancellationToken cancellationToken = default)
     {
         const int maxRetries = 2;
         var retryDelay = TimeSpan.FromSeconds(2);
@@ -20,31 +20,28 @@ public class GptService
         {
             try
             {
-                return await GenerateOnceAsync(apiUrl, apiKey, prompt, model, temperature, timeoutSeconds, cancellationToken);
+                return await GenerateOnceAsync(apiUrl, apiKey, prompt, model, timeoutSeconds, cancellationToken);
             }
             catch (OperationCanceledException) when (attempt < maxRetries)
             {
-                // 超时可重试，指数退避
                 Debug.WriteLine($"GPT API 超时(第{attempt + 1}次)，即将重试");
                 await Task.Delay(retryDelay, cancellationToken);
                 retryDelay *= 2;
             }
             catch (HttpRequestException) when (attempt < maxRetries)
             {
-                // 网络错误可重试
                 Debug.WriteLine($"GPT API 网络错误(第{attempt + 1}次)，即将重试");
                 await Task.Delay(retryDelay, cancellationToken);
                 retryDelay *= 2;
             }
             catch (OperationCanceledException)
             {
-                // 所有重试耗尽，转换为友好的超时提示
                 throw new TimeoutException($"GPT API 请求超时（{timeoutSeconds}秒），请检查网络或增大超时时间设置");
             }
         }
     }
 
-    private static async Task<string> GenerateOnceAsync(string apiUrl, string apiKey, string prompt, string model, double temperature, int timeoutSeconds, CancellationToken cancellationToken)
+    private static async Task<string> GenerateOnceAsync(string apiUrl, string apiKey, string prompt, string model, int timeoutSeconds, CancellationToken cancellationToken)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
@@ -52,11 +49,7 @@ public class GptService
         var requestBody = new
         {
             model,
-            messages = new[]
-            {
-                new { role = "system", content = prompt }
-            },
-            temperature,
+            messages = new[] { new { role = "user", content = prompt } },
             stream = true
         };
 
