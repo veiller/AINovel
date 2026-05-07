@@ -1,8 +1,10 @@
+using System.Collections;
 using System.Collections.ObjectModel;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using AINovel.Helpers;
 using AINovel.Models;
 using AINovel.Services;
 using HandyControl.Controls;
@@ -20,13 +22,17 @@ public partial class GenerateViewModel : ViewModelBase
     private ObservableCollection<UserAccount> _accounts = new();
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(GenerateCommand))]
     private NovelCore? _selectedCore;
+
+    [ObservableProperty]
+    private IList _selectedCores = new ArrayList();
 
     [ObservableProperty]
     private UserAccount? _filterAccount;
 
     [ObservableProperty]
-    private string _filterStatus = "全部";
+    private string _filterStatus = "未发布";
 
     [ObservableProperty]
     private string _selectedGenerateContent = string.Empty;
@@ -35,17 +41,35 @@ public partial class GenerateViewModel : ViewModelBase
     private bool _hasSelectedContent;
 
     [ObservableProperty]
+    private string _selectedGenerateHtml = string.Empty;
+
+    [ObservableProperty]
     private int _selectedCount;
 
     public ObservableCollection<string> StatusFilters { get; } = new()
     {
-        "全部", "待生成", "生成中", "已生成", "生成失败", "已发布"
+        "全部", "未发布", "待生成", "等待生成", "生成中", "已生成", "生成失败", "已发布"
     };
 
     public GenerateViewModel(SystemConfig config)
     {
         _config = config;
         LoadData();
+
+        WeakReferenceMessenger.Default.Register<GenerationStartedMessage>(this, (r, m) =>
+        {
+            Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                var (accountId, coreId) = m.Value;
+                var core = Cores.FirstOrDefault(x => x.Id == coreId);
+                if (core != null)
+                {
+                    core.GenerateStatus = 1;
+                    RefreshCoreInGrid(core);
+                }
+                StatusMessage = $"核心梗【{core?.SerialNumber}】开始生成";
+            });
+        });
 
         WeakReferenceMessenger.Default.Register<GenerationCompletedMessage>(this, (r, m) =>
         {
@@ -57,12 +81,12 @@ public partial class GenerateViewModel : ViewModelBase
                 {
                     core.GenerateStatus = 2;
                     core.GenerateContent = content;
+                    core.GenerateTime = DateTime.Now;
                     RefreshCoreInGrid(core);
                 }
                 StatusMessage = $"核心梗【{core?.SerialNumber}】生成完成";
             });
         });
-        
 
         WeakReferenceMessenger.Default.Register<GenerationFailedMessage>(this, (r, m) =>
         {
@@ -112,7 +136,7 @@ public partial class GenerateViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void RefreshCores()
+    public void RefreshCores()
     {
         var query = DbHelper.Db.Queryable<NovelCore>();
 
@@ -121,7 +145,11 @@ public partial class GenerateViewModel : ViewModelBase
             query = query.Where(x => x.AccountId == FilterAccount.Id);
         }
 
-        if (FilterStatus != "全部")
+        if (FilterStatus == "未发布")
+        {
+            query = query.Where(x => x.GenerateStatus != 4);
+        }
+        else if (FilterStatus != "全部")
         {
             var status = FilterStatus switch
             {
@@ -130,6 +158,7 @@ public partial class GenerateViewModel : ViewModelBase
                 "已生成" => 2,
                 "生成失败" => 3,
                 "已发布" => 4,
+                "等待生成" => 5,
                 _ => -1
             };
             if (status >= 0)
@@ -152,7 +181,14 @@ public partial class GenerateViewModel : ViewModelBase
         if (value != null)
         {
             SelectedGenerateContent = value.GenerateContent ?? string.Empty;
+            SelectedGenerateHtml = MarkdownHelper.ToHtml(SelectedGenerateContent);
             HasSelectedContent = !string.IsNullOrEmpty(SelectedGenerateContent);
+        }
+        else
+        {
+            SelectedGenerateContent = string.Empty;
+            SelectedGenerateHtml = string.Empty;
+            HasSelectedContent = false;
         }
     }
 
@@ -161,50 +197,61 @@ public partial class GenerateViewModel : ViewModelBase
     {
         if (SelectedCore == null) return;
         SelectedGenerateContent = SelectedCore.GenerateContent ?? string.Empty;
+        SelectedGenerateHtml = MarkdownHelper.ToHtml(SelectedGenerateContent);
         HasSelectedContent = !string.IsNullOrEmpty(SelectedGenerateContent);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanGenerate))]
     private void Generate()
     {
-        if (SelectedCore == null) return;
+        var cores = SelectedCores?.Cast<NovelCore>()
+            .Where(x => x.GenerateStatus != 4 && x.GenerateStatus != 1
+                        && !GenerationService.Instance.IsInQueue(x.Id))
+            .ToList();
 
-        if (SelectedCore.GenerateStatus == 4)
+        if (cores == null || cores.Count == 0)
         {
-            StatusMessage = "已发布状态的核心梗不能直接生成，请先修改状态";
+            if (SelectedCore != null)
+                StatusMessage = "选中的核心梗均无法生成（已发布、正在生成或在队列中）";
             return;
         }
 
-        if (SelectedCore.GenerateStatus == 1)
-        {
-            StatusMessage = "核心梗正在生成中，请勿重复触发";
-            return;
-        }
-
-        if (SelectedCore.GenerateStatus == 2)
+        // 检查是否需要覆盖确认
+        var hasExisting = cores.Any(x => x.GenerateStatus == 2);
+        if (hasExisting)
         {
             var result = System.Windows.MessageBox.Show(
-                "该核心梗已生成内容，是否覆盖原有内容？",
+                "部分核心梗已生成内容，是否覆盖原有内容？",
                 "确认覆盖",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 
             if (result != MessageBoxResult.Yes)
-            {
                 return;
-            }
         }
 
-        GenerationService.Instance.EnqueueRequest(SelectedCore, 1);
-        StatusMessage = $"核心梗【{SelectedCore.SerialNumber}】生成任务已加入队列";
+        GenerationService.Instance.EnqueueBatch(cores, 1);
+        foreach (var core in cores)
+        {
+            core.GenerateStatus = 5;
+            core.GenerateTime = null;
+            core.FailReason = "";
+            RefreshCoreInGrid(core);
+        }
+        StatusMessage = $"已加入 {cores.Count} 个生成任务";
     }
 
+    private bool CanGenerate() => SelectedCore != null || (SelectedCores?.Count > 0);
+
     [RelayCommand]
-    private void RetryGenerate()
+    private void ShowCoreDetail()
     {
-        if (SelectedCore == null || SelectedCore.GenerateStatus != 3) return;
-        GenerationService.Instance.EnqueueRequest(SelectedCore, 1);
-        StatusMessage = $"核心梗【{SelectedCore.SerialNumber}】重试任务已加入队列";
+        var core = SelectedCore;
+        if (core == null) return;
+
+        var window = new Views.CoreDetailWindow(core, this);
+        window.Owner = System.Windows.Application.Current.MainWindow;
+        window.ShowDialog();
     }
 
     [RelayCommand]
@@ -234,6 +281,13 @@ public partial class GenerateViewModel : ViewModelBase
         }
 
         GenerationService.Instance.EnqueueBatch(pendingCores, 1);
+        foreach (var core in pendingCores)
+        {
+            core.GenerateStatus = 5;
+            core.GenerateTime = null;
+            core.FailReason = "";
+            RefreshCoreInGrid(core);
+        }
         StatusMessage = $"已加入 {pendingCores.Count} 个生成任务";
     }
 
@@ -263,20 +317,6 @@ public partial class GenerateViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void BatchRetry()
-    {
-        var failedCores = Cores.Where(x => x.GenerateStatus == 3).ToList();
-        if (!failedCores.Any())
-        {
-            StatusMessage = "当前列表中没有生成失败的核心梗";
-            return;
-        }
-
-        GenerationService.Instance.EnqueueBatch(failedCores, 1);
-        StatusMessage = $"已加入 {failedCores.Count} 个重试任务";
-    }
-
-    [RelayCommand]
     private void DeleteCore()
     {
         if (SelectedCore == null) return;
@@ -296,6 +336,113 @@ public partial class GenerateViewModel : ViewModelBase
             StatusMessage = "核心梗已删除";
             RefreshCores();
         }
+    }
+
+    // ========== 复制操作 ==========
+
+    private string[] GetContentLines()
+    {
+        return (SelectedCore?.GenerateContent ?? "")
+            .Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+    }
+
+    private static int FindLineIndex(string[] lines, string marker)
+    {
+        for (var i = 0; i < lines.Length; i++)
+            if (lines[i].Trim().Contains(marker))
+                return i;
+        return -1;
+    }
+
+    [RelayCommand]
+    private void CopyTitle()
+    {
+        if (SelectedCore == null) return;
+        var lines = GetContentLines();
+        var titleIdx = FindLineIndex(lines, "【标题】");
+        if (titleIdx >= 0 && titleIdx + 1 < lines.Length)
+        {
+            var title = lines[titleIdx + 1].Trim();
+            if (!string.IsNullOrEmpty(title))
+            {
+                SetClipboardFormatted(title);
+                StatusMessage = "标题已复制到剪贴板";
+                return;
+            }
+        }
+        StatusMessage = "未找到标题内容";
+    }
+
+    [RelayCommand]
+    private void CopyFreeContent()
+    {
+        if (SelectedCore == null) return;
+        var lines = GetContentLines();
+        var contentIdx = FindLineIndex(lines, "【正文】");
+        var paidIdx = FindLineIndex(lines, "【付费卡点】");
+
+        if (contentIdx < 0)
+        {
+            StatusMessage = "未找到【正文】标记";
+            return;
+        }
+
+        var start = contentIdx + 1;
+        var end = paidIdx >= 0 ? paidIdx : lines.Length;
+
+        if (start >= end)
+        {
+            StatusMessage = "免费文内容为空";
+            return;
+        }
+
+        var content = string.Join("\r\n", lines.Skip(start).Take(end - start)).Trim();
+        if (!string.IsNullOrEmpty(content))
+        {
+            SetClipboardFormatted(content);
+            StatusMessage = "免费文已复制到剪贴板";
+        }
+        else
+        {
+            StatusMessage = "免费文内容为空";
+        }
+    }
+
+    [RelayCommand]
+    private void CopyPaidContent()
+    {
+        if (SelectedCore == null) return;
+        var lines = GetContentLines();
+        var paidIdx = FindLineIndex(lines, "【付费卡点】");
+
+        if (paidIdx < 0 || paidIdx + 1 >= lines.Length)
+        {
+            StatusMessage = "未找到付费内容";
+            return;
+        }
+
+        var content = string.Join("\r\n", lines.Skip(paidIdx + 1)).Trim();
+        if (!string.IsNullOrEmpty(content))
+        {
+            SetClipboardFormatted(content);
+            StatusMessage = "付费文已复制到剪贴板";
+        }
+        else
+        {
+            StatusMessage = "付费内容为空";
+        }
+    }
+
+    /// <summary>
+    /// 同时写入 HTML 格式和纯文本格式到剪贴板，确保粘贴到富文本编辑器时保留样式
+    /// </summary>
+    private static void SetClipboardFormatted(string markdown)
+    {
+        var html = MarkdownHelper.ToClipboardHtml(markdown);
+        var data = new DataObject();
+        data.SetData(DataFormats.Html, html);
+        data.SetText(markdown);
+        Clipboard.SetDataObject(data, true);
     }
 
     public void Cleanup()

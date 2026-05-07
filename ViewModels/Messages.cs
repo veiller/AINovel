@@ -2,6 +2,11 @@ using CommunityToolkit.Mvvm.Messaging.Messages;
 
 namespace AINovel.ViewModels;
 
+public class GenerationStartedMessage : ValueChangedMessage<(int AccountId, int CoreId)>
+{
+    public GenerationStartedMessage((int, int) value) : base(value) { }
+}
+
 public class GenerationCompletedMessage : ValueChangedMessage<(int AccountId, int CoreId, string Content)>
 {
     public GenerationCompletedMessage((int, int, string) value) : base(value) { }

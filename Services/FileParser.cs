@@ -43,7 +43,7 @@ public class FileParser
     }
 
     /// <summary>
-    /// 按【序号】或 ### 核心梗 序号 格式提取核心梗
+    /// 按【序号】或 #/##/### 核心梗 序号 格式提取核心梗
     /// </summary>
     private static List<(string, string)> ExtractCores(string content)
     {
@@ -66,8 +66,8 @@ public class FileParser
             return result;
         }
 
-        // 尝试 ### 核心梗 序号 格式（包括标题行和内容）
-        var pattern2 = @"(###\s*核心梗\s*(\d+)\s*[\s\S]*?)(?=(?:###\s*核心梗\s*\d+)|$)";
+        // 尝试 #/##/### 核心梗 序号 格式（包括标题行和内容）
+        var pattern2 = @"(#{1,3}\s*核心梗\s*(\d+)\s*[\s\S]*?)(?=(?:#{1,3}\s*核心梗\s*\d+)|$)";
         var matches2 = Regex.Matches(content, pattern2, RegexOptions.IgnoreCase);
         foreach (Match match in matches2)
         {

@@ -3,7 +3,8 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:hc="https://handyorg.github.io/handycontrol"
-    xmlns:conv="clr-namespace:AINovel.Converters">
+    xmlns:conv="clr-namespace:AINovel.Converters"
+    xmlns:helpers="clr-namespace:AINovel.Helpers">
     <UserControl.Resources>
         <conv:GenerateStatusConverter x:Key="GenerateStatusConverter"/>
     </UserControl.Resources>
@@ -94,7 +95,10 @@
                     HeadersVisibility="Column"
                     ItemsSource="{Binding Cores}"
                     SelectedItem="{Binding SelectedCore}"
-                    SelectionMode="Extended">
+                    SelectionMode="Extended"
+                    SelectionUnit="FullRow"
+                    helpers:DataGridBehavior.SelectedItems="{Binding SelectedCores, Mode=TwoWay}"
+                    MouseDoubleClick="DataGrid_MouseDoubleClick">
                     <DataGrid.Columns>
                         <DataGridTextColumn
                             Width="50"
@@ -133,7 +137,7 @@
             <!--  详情面板  -->
             <Border
                 Grid.Column="1"
-                Width="380"
+                Width="420"
                 Padding="20"
                 Background="White"
                 CornerRadius="8"
@@ -146,19 +150,38 @@
                 </Border.Effect>
                 <StackPanel>
                     <TextBlock
-                        Margin="0,0,0,15"
+                        Margin="0,0,0,10"
                         FontSize="18"
                         FontWeight="Bold"
                         Foreground="#1B95D9"
                         Text="生成内容" />
-                    <TextBox
+                    <Border
                         Height="400"
-                        AcceptsReturn="True"
-                        IsReadOnly="True"
-                        Style="{StaticResource TextBoxExtend}"
-                        Text="{Binding SelectedGenerateContent, Mode=OneWay}"
-                        TextWrapping="Wrap"
-                        VerticalScrollBarVisibility="Auto" />
+                        BorderBrush="#E0E0E0"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                        <WebBrowser
+                            helpers:WebBrowserHelper.Html="{Binding SelectedGenerateHtml, Mode=OneWay}" />
+                    </Border>
+                    <StackPanel
+                        Margin="0,10,0,0"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                        <Button
+                            Margin="0,0,8,0"
+                            Command="{Binding CopyTitleCommand}"
+                            Content="复制标题"
+                            Style="{StaticResource ButtonDefault}" />
+                        <Button
+                            Margin="0,0,8,0"
+                            Command="{Binding CopyFreeContentCommand}"
+                            Content="复制免费文"
+                            Style="{StaticResource ButtonDefault}" />
+                        <Button
+                            Command="{Binding CopyPaidContentCommand}"
+                            Content="复制付费文"
+                            Style="{StaticResource ButtonDefault}" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </Grid>
@@ -189,11 +212,6 @@
                     Style="{StaticResource ButtonPrimary}" />
                 <Button
                     Margin="0,0,10,0"
-                    Command="{Binding RetryGenerateCommand}"
-                    Content="重试"
-                    Style="{StaticResource ButtonWarning}" />
-                <Button
-                    Margin="0,0,10,0"
                     Command="{Binding PublishCommand}"
                     Content="发布"
                     Style="{StaticResource ButtonSuccess}" />
@@ -211,11 +229,6 @@
                     Command="{Binding BatchPublishCommand}"
                     Content="批量发布"
                     Style="{StaticResource ButtonSuccess}" />
-                <Button
-                    Margin="0,0,10,0"
-                    Command="{Binding BatchRetryCommand}"
-                    Content="批量重试"
-                    Style="{StaticResource ButtonWarning}" />
                 <Separator
                     Width="1"
                     Margin="10,0"

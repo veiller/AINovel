@@ -67,10 +67,18 @@ public class DbHelper
 
     public static void ResetGeneratingToWait()
     {
+        // 将崩溃前正在生成的恢复为待生成
         _db!.Updateable<NovelCore>()
             .SetColumns(x => x.GenerateStatus == 0)
             .SetColumns(x => x.FailReason == "程序异常中断")
             .Where(x => x.GenerateStatus == 1)
+            .ExecuteCommand();
+
+        // 将崩溃前在队列中等待的也恢复为待生成
+        _db!.Updateable<NovelCore>()
+            .SetColumns(x => x.GenerateStatus == 0)
+            .SetColumns(x => x.FailReason == "程序异常中断")
+            .Where(x => x.GenerateStatus == 5)
             .ExecuteCommand();
     }
 }

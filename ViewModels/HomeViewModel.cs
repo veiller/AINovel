@@ -23,6 +23,8 @@ public partial class HomeViewModel : ViewModelBase
     private int _totalPending;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(StartAutoGenerationCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StopAutoGenerationCommand))]
     private string _threadStatus = "停止";
 
     [ObservableProperty]
@@ -51,17 +53,21 @@ public partial class HomeViewModel : ViewModelBase
         ApiStatus = !string.IsNullOrEmpty(currentConfig?.GptApiKey) ? "已配置" : "未配置";
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanStartAutoGeneration))]
     private void StartAutoGeneration()
     {
         ThreadStatus = "运行中";
         GenerationService.Instance.StartAutoGeneration();
     }
 
-    [RelayCommand]
+    private bool CanStartAutoGeneration() => ThreadStatus != "运行中";
+
+    [RelayCommand(CanExecute = nameof(CanStopAutoGeneration))]
     private void StopAutoGeneration()
     {
         ThreadStatus = "停止";
         GenerationService.Instance.Stop();
     }
+
+    private bool CanStopAutoGeneration() => ThreadStatus == "运行中";
 }

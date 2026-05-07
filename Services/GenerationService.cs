@@ -22,9 +22,13 @@ public class GenerationService
     private int _pendingCount;
     private int _totalSucceeded;
     private int _totalFailed;
+    private readonly ConcurrentDictionary<int, byte> _pendingSet = new();
 
     public event Action<int, int, string>? GenerationCompleted;
     public event Action<int, int, string>? GenerationFailed;
+
+    /// <summary>检查指定核心梗是否正在队列中等待（尚未开始处理）</summary>
+    public bool IsInQueue(int coreId) => _pendingSet.ContainsKey(coreId);
 
     private GenerationService()
     {
@@ -54,7 +58,17 @@ public class GenerationService
     public void EnqueueRequest(NovelCore core, int generateType)
     {
         EnsureWorkers();
+
+        // 更新状态为"等待生成"并清空生成时间和错误信息
+        DbHelper.Db.Updateable<NovelCore>()
+            .SetColumns(x => x.GenerateStatus == 5)
+            .SetColumns(x => x.GenerateTime == null)
+            .SetColumns(x => x.FailReason == "")
+            .Where(x => x.Id == core.Id)
+            .ExecuteCommand();
+
         Interlocked.Increment(ref _pendingCount);
+        _pendingSet.TryAdd(core.Id, 0);
         _channel.Writer.TryWrite(new GenerationRequest(core, generateType));
     }
 
@@ -64,6 +78,15 @@ public class GenerationService
         var count = 0;
         foreach (var core in cores)
         {
+            // 更新状态为"等待生成"并清空生成时间和错误信息
+            DbHelper.Db.Updateable<NovelCore>()
+                .SetColumns(x => x.GenerateStatus == 5)
+                .SetColumns(x => x.GenerateTime == (DateTime?)null)
+                .SetColumns(x => x.FailReason == "")
+                .Where(x => x.Id == core.Id)
+                .ExecuteCommand();
+
+            _pendingSet.TryAdd(core.Id, 0);
             _channel.Writer.TryWrite(new GenerationRequest(core, generateType));
             count++;
         }
@@ -175,11 +198,17 @@ public class GenerationService
 
         try
         {
+            // 从待处理集合中移除（开始处理）
+            _pendingSet.TryRemove(core.Id, out _);
+
             await DbHelper.Db.Updateable<NovelCore>()
                 .SetColumns(x => x.GenerateStatus == 1)
                 .SetColumns(x => x.GenerateProgress == 0)
                 .Where(x => x.Id == core.Id)
                 .ExecuteCommandAsync();
+
+            WeakReferenceMessenger.Default.Send(
+                new GenerationStartedMessage((core.AccountId, core.Id)));
 
             var prompt = GetPrompt(core);
 
@@ -242,15 +271,52 @@ public class GenerationService
                 {
                     if (!_isRunning || _autoLoopCts.IsCancellationRequested) break;
 
-                    var waitCount = DbHelper.Db.Queryable<NovelCore>()
-                        .Where(x => x.AccountId == account.Id && x.GenerateStatus == 0)
+                    var accountTotalEnqueued = 0;
+                    var cps = DbHelper.Db.Queryable<CreativeProject>()
+                        .Where(x => x.AccountId == account.Id)
+                        .ToList();
+
+                    // 按 CP 分组处理
+                    foreach (var cp in cps)
+                    {
+                        if (!_isRunning || _autoLoopCts.IsCancellationRequested) break;
+
+                        var pipelineCount = DbHelper.Db.Queryable<NovelCore>()
+                            .Where(x => x.AccountId == account.Id && x.CpId == cp.Id
+                                        && x.GenerateStatus != 0 && x.GenerateStatus != 4)
+                            .Count();
+
+                        if (pipelineCount < config.MinWaitGenerateCount)
+                        {
+                            var takeCount = config.MinWaitGenerateCount - pipelineCount;
+                            var cores = DbHelper.Db.Queryable<NovelCore>()
+                                .Where(x => x.AccountId == account.Id && x.CpId == cp.Id && x.GenerateStatus == 0)
+                                .OrderBy(x => x.CreateTime)
+                                .Take(takeCount)
+                                .ToList();
+
+                            foreach (var core in cores)
+                            {
+                                if (!_isRunning || _autoLoopCts.IsCancellationRequested) break;
+                                EnqueueRequest(core, 0);
+                                accountTotalEnqueued++;
+                            }
+                        }
+                    }
+
+                    // 处理没有关联 CP 的核心梗
+                    if (!_isRunning || _autoLoopCts.IsCancellationRequested) continue;
+
+                    var noCpPipelineCount = DbHelper.Db.Queryable<NovelCore>()
+                        .Where(x => x.AccountId == account.Id && x.CpId == null
+                                    && x.GenerateStatus != 0 && x.GenerateStatus != 4)
                         .Count();
 
-                    if (waitCount < config.MinWaitGenerateCount)
+                    if (noCpPipelineCount < config.MinWaitGenerateCount)
                     {
-                        var takeCount = config.MinWaitGenerateCount - waitCount;
+                        var takeCount = config.MinWaitGenerateCount - noCpPipelineCount;
                         var cores = DbHelper.Db.Queryable<NovelCore>()
-                            .Where(x => x.AccountId == account.Id && x.GenerateStatus == 0)
+                            .Where(x => x.AccountId == account.Id && x.CpId == null && x.GenerateStatus == 0)
                             .OrderBy(x => x.CreateTime)
                             .Take(takeCount)
                             .ToList();
@@ -259,7 +325,16 @@ public class GenerationService
                         {
                             if (!_isRunning || _autoLoopCts.IsCancellationRequested) break;
                             EnqueueRequest(core, 0);
+                            accountTotalEnqueued++;
                         }
+                    }
+
+                    if (accountTotalEnqueued > 0)
+                    {
+                        var accountName = account.AccountName;
+                        _ = System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                            HandyControl.Controls.Growl.InfoGlobal(
+                                $"自动生成：账号【{accountName}】已加入 {accountTotalEnqueued} 个生成任务"));
                     }
                 }
 

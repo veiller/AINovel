@@ -108,6 +108,9 @@
                     CanUserAddRows="False"
                     IsReadOnly="True"
                     ItemsSource="{Binding PreviewCores}"
+                    SelectedItem="{Binding SelectedPreviewCore}"
+                    SelectionUnit="FullRow"
+                    MouseDoubleClick="PreviewDataGrid_MouseDoubleClick"
                     Visibility="{Binding HasPreview, Converter={StaticResource Boolean2VisibilityConverter}}">
                     <DataGrid.Columns>
                         <DataGridTextColumn

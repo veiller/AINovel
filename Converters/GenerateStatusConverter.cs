@@ -16,6 +16,7 @@ public class GenerateStatusConverter : IValueConverter
                 2 => "已生成",
                 3 => "生成失败",
                 4 => "已发布",
+                5 => "等待生成",
                 _ => "未知"
             };
         }

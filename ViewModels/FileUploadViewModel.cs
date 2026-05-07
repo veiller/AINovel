@@ -28,7 +28,13 @@ public partial class FileUploadViewModel : ViewModelBase
     private ObservableCollection<CorePreviewItem> _previewCores = new();
 
     [ObservableProperty]
+    private CorePreviewItem? _selectedPreviewCore;
+
+    [ObservableProperty]
     private bool _hasPreview;
+
+    [ObservableProperty]
+    private bool _hasSelectedPreview;
 
     [ObservableProperty]
     private string _editSerialNumber = string.Empty;
@@ -247,5 +253,20 @@ public partial class FileUploadViewModel : ViewModelBase
     private void CancelManualAdd()
     {
         IsAddingManual = false;
+    }
+
+    partial void OnSelectedPreviewCoreChanged(CorePreviewItem? value)
+    {
+        HasSelectedPreview = value != null;
+    }
+
+    [RelayCommand]
+    private void ShowPreviewDetail()
+    {
+        var item = SelectedPreviewCore;
+        if (item == null) return;
+
+        var info = $"序号: {item.SerialNumber}\n\n完整内容:\n{item.Content}";
+        System.Windows.MessageBox.Show(info, "核心梗详情", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
     }
 }

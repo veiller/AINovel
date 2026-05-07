@@ -1,11 +1,15 @@
 using System.IO;
 using System.Windows;
+using AINovel.Helpers;
 using AINovel.Services;
+using WinForms = System.Windows.Forms;
 
 namespace AINovel;
 
 public partial class App : Application
 {
+    private WinForms.NotifyIcon? _notifyIcon;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         // 注册全局异常处理
@@ -31,8 +35,12 @@ public partial class App : Application
 
         base.OnStartup(e);
 
-        // 初始化数据库
+        // 生成应用图标
         var appDir = AppDomain.CurrentDomain.BaseDirectory;
+        var iconPath = Path.Combine(appDir, "app.ico");
+        IconHelper.EnsureIcon(iconPath);
+
+        // 初始化数据库
         var dbPath = Path.Combine(appDir, "ainovel.db");
         var connectionString = $"Data Source={dbPath}";
 
@@ -40,5 +48,45 @@ public partial class App : Application
 
         // 恢复异常状态的核心梗
         DbHelper.ResetGeneratingToWait();
+
+        // 设置系统托盘
+        SetupTrayIcon(iconPath);
+    }
+
+    private void SetupTrayIcon(string iconPath)
+    {
+        _notifyIcon = new WinForms.NotifyIcon
+        {
+            Icon = new System.Drawing.Icon(iconPath),
+            Text = "AI小说生成程序",
+            Visible = true
+        };
+
+        _notifyIcon.DoubleClick += (_, _) => ShowMainWindow();
+
+        _notifyIcon.ContextMenuStrip = new WinForms.ContextMenuStrip();
+        _notifyIcon.ContextMenuStrip.Items.Add("显示窗口", null, (_, _) => ShowMainWindow());
+        _notifyIcon.ContextMenuStrip.Items.Add("退出", null, (_, _) => ExitApp());
+    }
+
+    private void ShowMainWindow()
+    {
+        if (MainWindow == null) return;
+
+        MainWindow.Show();
+        MainWindow.WindowState = WindowState.Normal;
+        MainWindow.Activate();
+    }
+
+    private void ExitApp()
+    {
+        _notifyIcon?.Dispose();
+        Current.Shutdown();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _notifyIcon?.Dispose();
+        base.OnExit(e);
     }
 }
