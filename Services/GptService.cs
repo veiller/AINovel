@@ -12,7 +12,7 @@ public class GptService
     private static readonly HttpClient _httpClient = new() { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
     private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
-    public async Task<string> GenerateAsync(string apiUrl, string apiKey, string prompt, string model = "gpt-3.5-turbo", double temperature = 0.7, int timeoutSeconds = 120, CancellationToken cancellationToken = default)
+    public async Task<string> GenerateAsync(string apiUrl, string apiKey, string prompt, string model = "gpt-3.5-turbo", double temperature = 0.7, int maxTokens = 8192, int timeoutSeconds = 120, CancellationToken cancellationToken = default)
     {
         const int maxRetries = 2;
         var retryDelay = TimeSpan.FromSeconds(2);
@@ -21,7 +21,7 @@ public class GptService
         {
             try
             {
-                return await GenerateOnceAsync(apiUrl, apiKey, prompt, model, temperature, timeoutSeconds, cancellationToken);
+                return await GenerateOnceAsync(apiUrl, apiKey, prompt, model, temperature, maxTokens, timeoutSeconds, cancellationToken);
             }
             catch (OperationCanceledException) when (attempt < maxRetries)
             {
@@ -45,7 +45,7 @@ public class GptService
         }
     }
 
-    private static async Task<string> GenerateOnceAsync(string apiUrl, string apiKey, string prompt, string model, double temperature, int timeoutSeconds, CancellationToken cancellationToken)
+    private static async Task<string> GenerateOnceAsync(string apiUrl, string apiKey, string prompt, string model, double temperature, int maxTokens, int timeoutSeconds, CancellationToken cancellationToken)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
@@ -58,6 +58,7 @@ public class GptService
                 new { role = "system", content = prompt }
             },
             temperature,
+            max_tokens = maxTokens,
             stream = true
         };
 

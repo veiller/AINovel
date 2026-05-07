@@ -58,7 +58,7 @@ public class NovelCore
     /// 生成状态: 0=待生成, 1=生成中, 2=已生成, 3=生成失败, 4=已发布
     /// </summary>
     public int GenerateStatus { get; set; } = 0;
-    public string? GenerateContent { get; set; }
+    public string? GenerateContent { get; set; } = string.Empty;
     [SugarColumn(IsNullable = true)]
     public DateTime? GenerateTime { get; set; }
     public string? FailReason { get; set; } = string.Empty;
@@ -107,11 +107,12 @@ public class SystemConfig
     public string GptApiKey { get; set; } = string.Empty;
     public int MaxThreadCount { get; set; } = 2;
     public int MinWaitGenerateCount { get; set; } = 3;
-    public int ApiTimeout { get; set; } = 30;
+    public int ApiTimeout { get; set; } = 180;
     public int BackupFrequency { get; set; } = 1;
     public string BackupPath { get; set; } = "Backup";
     public int BackupRetentionDays { get; set; } = 7;
     public string GptModel { get; set; } = "gpt-3.5-turbo";
     public double GptTemperature { get; set; } = 0.7;
+    public int MaxTokens { get; set; } = 16384;
     public DateTime UpdateTime { get; set; } = DateTime.Now;
 }

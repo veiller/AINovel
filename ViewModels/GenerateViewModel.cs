@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using AINovel.Models;
 using AINovel.Services;
+using HandyControl.Controls;
 
 namespace AINovel.ViewModels;
 
@@ -61,6 +62,7 @@ public partial class GenerateViewModel : ViewModelBase
                 StatusMessage = $"核心梗【{core?.SerialNumber}】生成完成";
             });
         });
+        
 
         WeakReferenceMessenger.Default.Register<GenerationFailedMessage>(this, (r, m) =>
         {
@@ -168,7 +170,7 @@ public partial class GenerateViewModel : ViewModelBase
 
         if (SelectedCore.GenerateStatus == 2)
         {
-            var result = MessageBox.Show(
+            var result = System.Windows.MessageBox.Show(
                 "该核心梗已生成内容，是否覆盖原有内容？",
                 "确认覆盖",
                 MessageBoxButton.YesNo,
@@ -266,7 +268,7 @@ public partial class GenerateViewModel : ViewModelBase
     {
         if (SelectedCore == null) return;
 
-        var result = MessageBox.Show(
+        var result = System.Windows.MessageBox.Show(
             $"确定要删除核心梗【{SelectedCore.SerialNumber}】吗？",
             "确认删除",
             MessageBoxButton.YesNo,
