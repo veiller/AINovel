@@ -79,6 +79,19 @@ public partial class GenerateViewModel : ViewModelBase
                 StatusMessage = $"核心梗【{core?.SerialNumber}】生成失败: {reason}";
             });
         });
+
+        WeakReferenceMessenger.Default.Register<QueueCompletedMessage>(this, (r, m) =>
+        {
+            Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                var (succeeded, failed) = m.Value;
+                var total = succeeded + failed;
+                var msg = $"生成完成：共 {total} 个，成功 {succeeded} 个";
+                if (failed > 0) msg += $"，失败 {failed} 个";
+                Growl.InfoGlobal(msg);
+                StatusMessage = msg;
+            });
+        });
     }
 
     private void RefreshCoreInGrid(NovelCore core)

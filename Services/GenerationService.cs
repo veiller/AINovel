@@ -19,6 +19,9 @@ public class GenerationService
     private volatile int _currentWorkerCount;
     private readonly object _workerLock = new();
     private bool _isRunning;
+    private int _pendingCount;
+    private int _totalSucceeded;
+    private int _totalFailed;
 
     public event Action<int, int, string>? GenerationCompleted;
     public event Action<int, int, string>? GenerationFailed;
@@ -51,16 +54,20 @@ public class GenerationService
     public void EnqueueRequest(NovelCore core, int generateType)
     {
         EnsureWorkers();
+        Interlocked.Increment(ref _pendingCount);
         _channel.Writer.TryWrite(new GenerationRequest(core, generateType));
     }
 
     public void EnqueueBatch(IEnumerable<NovelCore> cores, int generateType)
     {
         EnsureWorkers();
+        var count = 0;
         foreach (var core in cores)
         {
             _channel.Writer.TryWrite(new GenerationRequest(core, generateType));
+            count++;
         }
+        Interlocked.Add(ref _pendingCount, count);
     }
 
     public void UpdateThreadCount(int count)
@@ -197,6 +204,7 @@ public class GenerationService
             GenerationCompleted?.Invoke(core.AccountId, core.Id, content);
             WeakReferenceMessenger.Default.Send(
                 new GenerationCompletedMessage((core.AccountId, core.Id, content)));
+            Interlocked.Increment(ref _totalSucceeded);
         }
         catch (Exception ex)
         {
@@ -209,6 +217,14 @@ public class GenerationService
             GenerationFailed?.Invoke(core.AccountId, core.Id, ex.Message);
             WeakReferenceMessenger.Default.Send(
                 new GenerationFailedMessage((core.AccountId, core.Id, ex.Message)));
+            Interlocked.Increment(ref _totalFailed);
+        }
+
+        if (Interlocked.Decrement(ref _pendingCount) == 0)
+        {
+            var succeeded = Interlocked.Exchange(ref _totalSucceeded, 0);
+            var failed = Interlocked.Exchange(ref _totalFailed, 0);
+            WeakReferenceMessenger.Default.Send(new QueueCompletedMessage((succeeded, failed)));
         }
     }
 

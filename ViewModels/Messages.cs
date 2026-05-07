@@ -11,3 +11,8 @@ public class GenerationFailedMessage : ValueChangedMessage<(int AccountId, int C
 {
     public GenerationFailedMessage((int, int, string) value) : base(value) { }
 }
+
+public class QueueCompletedMessage : ValueChangedMessage<(int Succeeded, int Failed)>
+{
+    public QueueCompletedMessage((int, int) value) : base(value) { }
+}
