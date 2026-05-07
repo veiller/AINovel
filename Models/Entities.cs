@@ -113,6 +113,5 @@ public class SystemConfig
     public int BackupRetentionDays { get; set; } = 7;
     public string GptModel { get; set; } = "gpt-3.5-turbo";
     public double GptTemperature { get; set; } = 0.7;
-    public int MaxTokens { get; set; } = 16384;
     public DateTime UpdateTime { get; set; } = DateTime.Now;
 }

@@ -45,7 +45,6 @@ public class DbHelper
                 GptApiKey = "",
                 GptModel = "gpt-3.5-turbo",
                 GptTemperature = 0.7,
-                MaxTokens = 16384,
                 MaxThreadCount = 2,
                 MinWaitGenerateCount = 3,
                 ApiTimeout = 180,

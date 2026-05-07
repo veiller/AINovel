@@ -189,7 +189,6 @@ public class GenerationService
                 prompt,
                 config.GptModel,
                 config.GptTemperature,
-                config.MaxTokens,
                 config.ApiTimeout);
 
             DbHelper.Db.Updateable<NovelCore>()
