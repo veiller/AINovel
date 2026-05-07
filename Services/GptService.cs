@@ -17,37 +17,33 @@ public class GptService
         const int maxRetries = 2;
         var retryDelay = TimeSpan.FromSeconds(2);
 
-        for (var attempt = 0; attempt <= maxRetries; attempt++)
+        for (var attempt = 0; ; attempt++)
         {
             try
             {
                 return await GenerateOnceAsync(apiUrl, apiKey, prompt, model, temperature, timeoutSeconds, cancellationToken);
             }
-            catch (Exception ex) when (attempt < maxRetries && IsRetryable(ex))
+            catch (OperationCanceledException) when (attempt < maxRetries)
             {
-                Debug.WriteLine($"GPT API 调用失败(第{attempt + 1}次)，即将重试: {ex.Message}");
+                // 超时可重试，指数退避
+                Debug.WriteLine($"GPT API 超时(第{attempt + 1}次)，即将重试");
                 await Task.Delay(retryDelay, cancellationToken);
-                retryDelay = TimeSpan.FromSeconds(retryDelay.TotalSeconds * 2); // 指数退避
+                retryDelay *= 2;
+            }
+            catch (HttpRequestException) when (attempt < maxRetries)
+            {
+                // 网络错误可重试
+                Debug.WriteLine($"GPT API 网络错误(第{attempt + 1}次)，即将重试");
+                await Task.Delay(retryDelay, cancellationToken);
+                retryDelay *= 2;
+            }
+            catch (OperationCanceledException)
+            {
+                // 所有重试耗尽，转换为友好的超时提示
+                throw new TimeoutException($"GPT API 请求超时（{timeoutSeconds}秒），请检查网络或增大超时时间设置");
             }
         }
-
-        // 最后一次尝试，失败直接向上抛
-        try
-        {
-            return await GenerateOnceAsync(apiUrl, apiKey, prompt, model, temperature, timeoutSeconds, cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            throw new TimeoutException($"GPT API 请求超时（{timeoutSeconds}秒），请检查网络或增大超时时间设置");
-        }
     }
-
-    private static bool IsRetryable(Exception ex) => ex switch
-    {
-        HttpRequestException => true,
-        TaskCanceledException => true,
-        _ => false
-    };
 
     private static async Task<string> GenerateOnceAsync(string apiUrl, string apiKey, string prompt, string model, double temperature, int timeoutSeconds, CancellationToken cancellationToken)
     {
