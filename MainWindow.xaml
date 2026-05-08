@@ -96,9 +96,6 @@
                     <DataTemplate DataType="{x:Type vm:AccountViewModel}">
                         <views:AccountView/>
                     </DataTemplate>
-                    <DataTemplate DataType="{x:Type vm:PromptViewModel}">
-                        <views:PromptView/>
-                    </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:CpViewModel}">
                         <views:CpView/>
                     </DataTemplate>

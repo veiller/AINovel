@@ -22,6 +22,9 @@ public partial class GenerateViewModel : ViewModelBase
     private ObservableCollection<UserAccount> _accounts = new();
 
     [ObservableProperty]
+    private ObservableCollection<CreativeProject> _projects = new();
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GenerateCommand))]
     [NotifyCanExecuteChangedFor(nameof(PublishCommand))]
     private NovelCore? _selectedCore;
@@ -29,10 +32,14 @@ public partial class GenerateViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GenerateCommand))]
     [NotifyCanExecuteChangedFor(nameof(PublishCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteCoreCommand))]
     private IList _selectedCores = new ArrayList();
 
     [ObservableProperty]
     private UserAccount? _filterAccount;
+
+    [ObservableProperty]
+    private CreativeProject? _filterCp;
 
     [ObservableProperty]
     private string _filterStatus = "未发布";
@@ -138,7 +145,14 @@ public partial class GenerateViewModel : ViewModelBase
     {
         var accountList = DbHelper.Db.Queryable<UserAccount>().ToList();
         Accounts = new ObservableCollection<UserAccount>(accountList);
-        RefreshCores();
+        if (accountList.Count > 0)
+        {
+            FilterAccount = accountList[0];
+        }
+        else
+        {
+            RefreshCores();
+        }
     }
 
     [RelayCommand]
@@ -174,11 +188,37 @@ public partial class GenerateViewModel : ViewModelBase
         }
 
         var list = query.OrderByDescending(x => x.CreateTime).ToList();
+
+        // 应用 CP 筛选（内存筛选，因为可能已有其他 SQL 条件）
+        if (FilterCp != null)
+        {
+            list = list.Where(x => x.CpId == FilterCp.Id).ToList();
+        }
+
         Cores = new ObservableCollection<NovelCore>(list);
         SelectedCount = Cores.Count;
     }
 
-    partial void OnFilterAccountChanged(UserAccount? value) => RefreshCores();
+    partial void OnFilterAccountChanged(UserAccount? value)
+    {
+        Projects.Clear();
+        if (value != null)
+        {
+            var cpList = DbHelper.Db.Queryable<CreativeProject>()
+                .Where(x => x.AccountId == value.Id)
+                .ToList();
+            Projects = new ObservableCollection<CreativeProject>(cpList);
+            FilterCp = cpList.FirstOrDefault();
+        }
+        else
+        {
+            FilterCp = null;
+            RefreshCores();
+        }
+    }
+
+    partial void OnFilterCpChanged(CreativeProject? value) => RefreshCores();
+
     partial void OnFilterStatusChanged(string value) => RefreshCores();
 
     // 选中行时自动显示内容
@@ -301,21 +341,24 @@ public partial class GenerateViewModel : ViewModelBase
     [RelayCommand]
     private void DeleteCore()
     {
-        if (SelectedCore == null) return;
+        var cores = SelectedCores?.Cast<NovelCore>().ToList();
+        if (cores == null || cores.Count == 0) return;
+
+        var msg = cores.Count == 1
+            ? $"确定要删除核心梗【{cores[0].SerialNumber}】吗？"
+            : $"确定要删除选中的 {cores.Count} 个核心梗吗？";
 
         var result = System.Windows.MessageBox.Show(
-            $"确定要删除核心梗【{SelectedCore.SerialNumber}】吗？",
-            "确认删除",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+            msg, "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
         if (result == MessageBoxResult.Yes)
         {
+            var ids = cores.Select(x => x.Id).ToList();
             DbHelper.Db.Deleteable<NovelCore>()
-                .Where(x => x.Id == SelectedCore.Id)
+                .Where(x => ids.Contains(x.Id))
                 .ExecuteCommand();
 
-            StatusMessage = "核心梗已删除";
+            StatusMessage = $"已删除 {cores.Count} 个核心梗";
             RefreshCores();
         }
     }

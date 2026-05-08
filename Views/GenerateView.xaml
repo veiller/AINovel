@@ -49,6 +49,17 @@
                     ItemsSource="{Binding Accounts}"
                     SelectedItem="{Binding FilterAccount}"
                     Style="{StaticResource ComboBoxExtend}" />
+                <TextBlock
+                    Margin="10,0,10,0"
+                    VerticalAlignment="Center"
+                    Foreground="#666"
+                    Text="CP筛选:" />
+                <ComboBox
+                    Width="150"
+                    DisplayMemberPath="Name"
+                    ItemsSource="{Binding Projects}"
+                    SelectedItem="{Binding FilterCp}"
+                    Style="{StaticResource ComboBoxExtend}" />
                 <Button
                     Margin="10,0,20,0"
                     Command="{Binding RefreshCoresCommand}"

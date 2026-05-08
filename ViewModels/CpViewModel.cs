@@ -22,12 +22,6 @@ public partial class CpViewModel : ViewModelBase
     private CreativeProject? _selectedCp;
 
     [ObservableProperty]
-    private ObservableCollection<CommonPrompt> _commonPrompts = new();
-
-    [ObservableProperty]
-    private ObservableCollection<AccountPrompt> _accountPrompts = new();
-
-    [ObservableProperty]
     private bool _isEditing;
 
     [ObservableProperty]
@@ -37,13 +31,7 @@ public partial class CpViewModel : ViewModelBase
     private string _editDescription = string.Empty;
 
     [ObservableProperty]
-    private int _editPromptType; // 0=公共提示词, 1=账号私有提示词
-
-    [ObservableProperty]
-    private CommonPrompt? _selectedCommonPrompt;
-
-    [ObservableProperty]
-    private AccountPrompt? _selectedAccountPrompt;
+    private string _editPromptContent = string.Empty;
 
     public CpViewModel()
     {
@@ -55,32 +43,14 @@ public partial class CpViewModel : ViewModelBase
         var accountList = DbHelper.Db.Queryable<UserAccount>().ToList();
         Accounts = new ObservableCollection<UserAccount>(accountList);
 
-        var commonList = DbHelper.Db.Queryable<CommonPrompt>().ToList();
-        CommonPrompts = new ObservableCollection<CommonPrompt>(commonList);
-
         if (SelectedAccount != null)
         {
-            LoadAccountPrompts();
             LoadCps();
         }
         else if (Accounts.Count > 0)
         {
             SelectedAccount = Accounts[0];
         }
-    }
-
-    private void LoadAccountPrompts()
-    {
-        if (SelectedAccount == null)
-        {
-            AccountPrompts.Clear();
-            return;
-        }
-
-        var list = DbHelper.Db.Queryable<AccountPrompt>()
-            .Where(x => x.AccountId == SelectedAccount.Id)
-            .ToList();
-        AccountPrompts = new ObservableCollection<AccountPrompt>(list);
     }
 
     private void LoadCps()
@@ -100,14 +70,17 @@ public partial class CpViewModel : ViewModelBase
 
     partial void OnSelectedAccountChanged(UserAccount? value)
     {
-        LoadAccountPrompts();
         LoadCps();
-    }
 
-    partial void OnEditPromptTypeChanged(int value)
-    {
-        SelectedCommonPrompt = null;
-        SelectedAccountPrompt = null;
+        if (Cps.Count > 0)
+        {
+            SelectedCp = Cps[0];
+            EditCp();
+        }
+        else
+        {
+            IsEditing = false;
+        }
     }
 
     [RelayCommand]
@@ -121,9 +94,7 @@ public partial class CpViewModel : ViewModelBase
         SelectedCp = null;
         EditName = string.Empty;
         EditDescription = string.Empty;
-        EditPromptType = 0;
-        SelectedCommonPrompt = null;
-        SelectedAccountPrompt = null;
+        EditPromptContent = string.Empty;
         IsEditing = true;
     }
 
@@ -133,27 +104,17 @@ public partial class CpViewModel : ViewModelBase
         if (SelectedCp == null) return;
         EditName = SelectedCp.Name;
         EditDescription = SelectedCp.Description ?? string.Empty;
-        EditPromptType = 0;
-        SelectedCommonPrompt = null;
-        SelectedAccountPrompt = null;
 
+        // 加载关联的私有提示词内容
         if (SelectedCp.PromptId != null)
         {
-            var commonPrompt = CommonPrompts.FirstOrDefault(x => x.Id == SelectedCp.PromptId);
-            if (commonPrompt != null)
-            {
-                EditPromptType = 0;
-                SelectedCommonPrompt = commonPrompt;
-            }
-            else
-            {
-                var accountPrompt = AccountPrompts.FirstOrDefault(x => x.Id == SelectedCp.PromptId);
-                if (accountPrompt != null)
-                {
-                    EditPromptType = 1;
-                    SelectedAccountPrompt = accountPrompt;
-                }
-            }
+            var promptId = SelectedCp.PromptId.Value;
+            var prompt = DbHelper.Db.Queryable<AccountPrompt>().InSingle(promptId);
+            EditPromptContent = prompt?.Content ?? string.Empty;
+        }
+        else
+        {
+            EditPromptContent = string.Empty;
         }
 
         IsEditing = true;
@@ -174,14 +135,43 @@ public partial class CpViewModel : ViewModelBase
             return;
         }
 
+        // 自动创建或更新私有提示词
         int? promptId = null;
-        if (EditPromptType == 0 && SelectedCommonPrompt != null)
+        if (!string.IsNullOrWhiteSpace(EditPromptContent))
         {
-            promptId = SelectedCommonPrompt.Id;
-        }
-        else if (EditPromptType == 1 && SelectedAccountPrompt != null)
-        {
-            promptId = SelectedAccountPrompt.Id;
+            var promptTitle = $"{SelectedAccount.AccountName}-{EditName}";
+
+            if (SelectedCp?.PromptId != null)
+            {
+                // 更新已有提示词
+                var existingPromptId = SelectedCp.PromptId.Value;
+                var existingPrompt = DbHelper.Db.Queryable<AccountPrompt>().InSingle(existingPromptId);
+                if (existingPrompt != null)
+                {
+                    existingPrompt.Title = promptTitle;
+                    existingPrompt.Content = EditPromptContent;
+                    existingPrompt.UpdateTime = DateTime.Now;
+                    DbHelper.Db.Updateable(existingPrompt).ExecuteCommand();
+                    promptId = existingPrompt.Id;
+                }
+            }
+
+            if (promptId == null)
+            {
+                // 新建私有提示词（Insertable 会自动回填自增 Id）
+                var newPrompt = new AccountPrompt
+                {
+                    AccountId = SelectedAccount.Id,
+                    Title = promptTitle,
+                    Content = EditPromptContent,
+                    IsCopyFromCommon = false,
+                    IsDefault = false,
+                    CreateTime = DateTime.Now,
+                    UpdateTime = DateTime.Now
+                };
+                DbHelper.Db.Insertable(newPrompt).ExecuteCommand();
+                promptId = newPrompt.Id;
+            }
         }
 
         if (SelectedCp == null)

@@ -32,7 +32,6 @@ public partial class MainViewModel : ViewModelBase
     {
         "首页",
         "账号管理",
-        "提示词管理",
         "CP管理",
         "文件上传",
         "生成管理",
@@ -72,7 +71,6 @@ public partial class MainViewModel : ViewModelBase
         {
             "首页" => new HomeViewModel(SystemConfig),
             "账号管理" => new AccountViewModel(),
-            "提示词管理" => new PromptViewModel(),
             "CP管理" => new CpViewModel(),
             "文件上传" => new FileUploadViewModel(),
             "生成管理" => new GenerateViewModel(SystemConfig),
