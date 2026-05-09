@@ -61,6 +61,17 @@ public partial class FileUploadViewModel : ViewModelBase
         }
     }
 
+    private async Task LoadAccountsAsync()
+    {
+        var list = await DbHelper.Db.Queryable<UserAccount>().Where(x => x.IsEnable).ToListAsync();
+        Accounts = new ObservableCollection<UserAccount>(list);
+
+        if (Accounts.Count > 0)
+        {
+            SelectedAccount = Accounts[0];
+        }
+    }
+
     private void LoadCps()
     {
         Cps.Clear();
@@ -74,13 +85,26 @@ public partial class FileUploadViewModel : ViewModelBase
         Cps = new ObservableCollection<CreativeProject>(list);
     }
 
+    private async Task LoadCpsAsync()
+    {
+        Cps.Clear();
+        SelectedCp = null;
+
+        if (SelectedAccount == null) return;
+
+        var list = await DbHelper.Db.Queryable<CreativeProject>()
+            .Where(x => x.AccountId == SelectedAccount.Id)
+            .ToListAsync();
+        Cps = new ObservableCollection<CreativeProject>(list);
+    }
+
     partial void OnSelectedAccountChanged(UserAccount? value)
     {
-        LoadCps();
+        _ = LoadCpsAsync();
     }
 
     [RelayCommand]
-    private void BrowseFile()
+    private async Task BrowseFileAsync()
     {
         var dialog = new OpenFileDialog
         {
@@ -91,11 +115,11 @@ public partial class FileUploadViewModel : ViewModelBase
         if (dialog.ShowDialog() == true)
         {
             FilePath = dialog.FileName;
-            ParseFile();
+            await ParseFileAsync();
         }
     }
 
-    private async void ParseFile()
+    private async Task ParseFileAsync()
     {
         if (string.IsNullOrEmpty(FilePath) || SelectedAccount == null) return;
 
@@ -121,7 +145,7 @@ public partial class FileUploadViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SaveToAccount()
+    private async Task SaveToAccountAsync()
     {
         if (SelectedAccount == null)
         {
@@ -139,10 +163,10 @@ public partial class FileUploadViewModel : ViewModelBase
         var cpId = SelectedCp?.Id;
 
         // 查询已有序号，避免重复
-        var existingSerials = DbHelper.Db.Queryable<NovelCore>()
+        var existingSerials = await DbHelper.Db.Queryable<NovelCore>()
             .Where(x => x.AccountId == accountId)
             .Select(x => x.SerialNumber)
-            .ToList();
+            .ToListAsync();
 
         var coresToInsert = new List<NovelCore>();
         var duplicateCount = 0;
@@ -174,7 +198,7 @@ public partial class FileUploadViewModel : ViewModelBase
         }
 
         // 批量插入
-        DbHelper.Db.Insertable(coresToInsert).ExecuteCommand();
+        await DbHelper.Db.Insertable(coresToInsert).ExecuteCommandAsync();
 
         var msg = $"已保存 {coresToInsert.Count} 个核心梗到账号 {SelectedAccount.AccountName}";
         if (duplicateCount > 0)
@@ -203,7 +227,7 @@ public partial class FileUploadViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SaveManualCore()
+    private async Task SaveManualCoreAsync()
     {
         if (SelectedAccount == null)
         {
@@ -224,8 +248,8 @@ public partial class FileUploadViewModel : ViewModelBase
         }
 
         // 检查重复序号
-        var exists = DbHelper.Db.Queryable<NovelCore>()
-            .Any(x => x.AccountId == SelectedAccount.Id && x.SerialNumber == EditSerialNumber);
+        var exists = await DbHelper.Db.Queryable<NovelCore>()
+            .AnyAsync(x => x.AccountId == SelectedAccount.Id && x.SerialNumber == EditSerialNumber);
 
         if (exists)
         {
@@ -243,7 +267,7 @@ public partial class FileUploadViewModel : ViewModelBase
             GenerateProgress = 0,
             CpId = SelectedCp?.Id
         };
-        DbHelper.Db.Insertable(core).ExecuteCommand();
+        await DbHelper.Db.Insertable(core).ExecuteCommandAsync();
 
         StatusMessage = "核心梗添加成功";
         IsAddingManual = false;

@@ -41,18 +41,24 @@ public partial class AccountViewModel : ViewModelBase
         Accounts = new ObservableCollection<UserAccount>(list);
     }
 
+    private async Task LoadAccountsAsync()
+    {
+        var list = await DbHelper.Db.Queryable<UserAccount>().ToListAsync();
+        Accounts = new ObservableCollection<UserAccount>(list);
+    }
+
     [RelayCommand]
-    private void Search()
+    private async Task SearchAsync()
     {
         if (string.IsNullOrWhiteSpace(SearchText))
         {
-            LoadAccounts();
+            await LoadAccountsAsync();
         }
         else
         {
-            var list = DbHelper.Db.Queryable<UserAccount>()
+            var list = await DbHelper.Db.Queryable<UserAccount>()
                 .Where(x => x.AccountName.Contains(SearchText))
-                .ToList();
+                .ToListAsync();
             Accounts = new ObservableCollection<UserAccount>(list);
         }
     }
@@ -78,7 +84,7 @@ public partial class AccountViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void Save()
+    private async Task SaveAsync()
     {
         if (string.IsNullOrWhiteSpace(EditAccountName))
         {
@@ -95,22 +101,22 @@ public partial class AccountViewModel : ViewModelBase
                 IsEnable = EditIsEnable,
                 CreateTime = DateTime.Now
             };
-            DbHelper.Db.Insertable(newAccount).ExecuteCommand();
+            await DbHelper.Db.Insertable(newAccount).ExecuteCommandAsync();
             StatusMessage = "账号添加成功";
         }
         else
         {
-            DbHelper.Db.Updateable<UserAccount>()
+            await DbHelper.Db.Updateable<UserAccount>()
                 .SetColumns(x => x.AccountName == EditAccountName)
                 .SetColumns(x => x.Remark == EditRemark)
                 .SetColumns(x => x.IsEnable == EditIsEnable)
                 .Where(x => x.Id == SelectedAccount.Id)
-                .ExecuteCommand();
+                .ExecuteCommandAsync();
             StatusMessage = "账号更新成功";
         }
 
         IsEditing = false;
-        LoadAccounts();
+        await LoadAccountsAsync();
     }
 
     [RelayCommand]
@@ -120,7 +126,7 @@ public partial class AccountViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void Delete()
+    private async Task DeleteAsync()
     {
         if (SelectedAccount == null) return;
 
@@ -134,28 +140,28 @@ public partial class AccountViewModel : ViewModelBase
 
         var accountId = SelectedAccount.Id;
 
-        DbHelper.Db.Deleteable<AccountPrompt>().Where(x => x.AccountId == accountId).ExecuteCommand();
-        DbHelper.Db.Deleteable<NovelCore>().Where(x => x.AccountId == accountId).ExecuteCommand();
-        DbHelper.Db.Deleteable<CreativeProject>().Where(x => x.AccountId == accountId).ExecuteCommand();
+        await DbHelper.Db.Deleteable<AccountPrompt>().Where(x => x.AccountId == accountId).ExecuteCommandAsync();
+        await DbHelper.Db.Deleteable<NovelCore>().Where(x => x.AccountId == accountId).ExecuteCommandAsync();
+        await DbHelper.Db.Deleteable<CreativeProject>().Where(x => x.AccountId == accountId).ExecuteCommandAsync();
 
-        DbHelper.Db.Deleteable<UserAccount>()
+        await DbHelper.Db.Deleteable<UserAccount>()
             .Where(x => x.Id == accountId)
-            .ExecuteCommand();
+            .ExecuteCommandAsync();
 
         StatusMessage = "账号及关联数据删除成功";
-        LoadAccounts();
+        await LoadAccountsAsync();
     }
 
     [RelayCommand]
-    private void ToggleEnable()
+    private async Task ToggleEnableAsync()
     {
         if (SelectedAccount == null) return;
 
-        DbHelper.Db.Updateable<UserAccount>()
+        await DbHelper.Db.Updateable<UserAccount>()
             .SetColumns(x => x.IsEnable == !x.IsEnable)
             .Where(x => x.Id == SelectedAccount.Id)
-            .ExecuteCommand();
+            .ExecuteCommandAsync();
 
-        LoadAccounts();
+        await LoadAccountsAsync();
     }
 }

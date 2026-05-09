@@ -151,12 +151,12 @@ public partial class GenerateViewModel : ViewModelBase
         }
         else
         {
-            RefreshCores();
+            _ = RefreshCoresAsync();
         }
     }
 
     [RelayCommand]
-    public void RefreshCores()
+    public async Task RefreshCoresAsync()
     {
         var query = DbHelper.Db.Queryable<NovelCore>();
 
@@ -187,7 +187,7 @@ public partial class GenerateViewModel : ViewModelBase
             }
         }
 
-        var list = query.OrderByDescending(x => x.CreateTime).ToList();
+        var list = await query.OrderByDescending(x => x.CreateTime).ToListAsync();
 
         // 应用 CP 筛选（内存筛选，因为可能已有其他 SQL 条件）
         if (FilterCp != null)
@@ -201,25 +201,36 @@ public partial class GenerateViewModel : ViewModelBase
 
     partial void OnFilterAccountChanged(UserAccount? value)
     {
+        _ = OnFilterAccountChangedAsync(value);
+    }
+
+    private async Task OnFilterAccountChangedAsync(UserAccount? value)
+    {
         Projects.Clear();
         if (value != null)
         {
-            var cpList = DbHelper.Db.Queryable<CreativeProject>()
+            var cpList = await DbHelper.Db.Queryable<CreativeProject>()
                 .Where(x => x.AccountId == value.Id)
-                .ToList();
+                .ToListAsync();
             Projects = new ObservableCollection<CreativeProject>(cpList);
             FilterCp = cpList.FirstOrDefault();
         }
         else
         {
             FilterCp = null;
-            RefreshCores();
+            await RefreshCoresAsync();
         }
     }
 
-    partial void OnFilterCpChanged(CreativeProject? value) => RefreshCores();
+    partial void OnFilterCpChanged(CreativeProject? value)
+    {
+        _ = RefreshCoresAsync();
+    }
 
-    partial void OnFilterStatusChanged(string value) => RefreshCores();
+    partial void OnFilterStatusChanged(string value)
+    {
+        _ = RefreshCoresAsync();
+    }
 
     // 选中行时自动显示内容
     partial void OnSelectedCoreChanged(NovelCore? value)
@@ -257,7 +268,7 @@ public partial class GenerateViewModel : ViewModelBase
     }
 
     [RelayCommand(CanExecute = nameof(CanGenerate))]
-    private void Generate()
+    private async Task GenerateAsync()
     {
         var cores = SelectedCores?.Cast<NovelCore>()
             .Where(x => x.GenerateStatus != 4 && x.GenerateStatus != 1
@@ -285,7 +296,7 @@ public partial class GenerateViewModel : ViewModelBase
                 return;
         }
 
-        GenerationService.Instance.EnqueueBatch(cores, 1);
+        await GenerationService.Instance.EnqueueBatchAsync(cores, 1);
         foreach (var core in cores)
         {
             core.GenerateStatus = 5;
@@ -310,7 +321,7 @@ public partial class GenerateViewModel : ViewModelBase
     }
 
     [RelayCommand(CanExecute = nameof(CanPublish))]
-    private void Publish()
+    private async Task PublishAsync()
     {
         var cores = SelectedCores?.Cast<NovelCore>()
             .Where(x => x.GenerateStatus == 2)
@@ -324,22 +335,22 @@ public partial class GenerateViewModel : ViewModelBase
 
         foreach (var core in cores)
         {
-            DbHelper.Db.Updateable<NovelCore>()
+            await DbHelper.Db.Updateable<NovelCore>()
                 .SetColumns(x => x.GenerateStatus == 4)
                 .SetColumns(x => x.PublishTime == DateTime.Now)
                 .SetColumns(x => x.Operator == "系统用户")
                 .Where(x => x.Id == core.Id)
-                .ExecuteCommand();
+                .ExecuteCommandAsync();
         }
 
         StatusMessage = $"已发布 {cores.Count} 个核心梗";
-        RefreshCores();
+        await RefreshCoresAsync();
     }
 
     private bool CanPublish() => SelectedCore != null || (SelectedCores?.Count > 0);
 
     [RelayCommand]
-    private void DeleteCore()
+    private async Task DeleteCoreAsync()
     {
         var cores = SelectedCores?.Cast<NovelCore>().ToList();
         if (cores == null || cores.Count == 0) return;
@@ -354,12 +365,12 @@ public partial class GenerateViewModel : ViewModelBase
         if (result == MessageBoxResult.Yes)
         {
             var ids = cores.Select(x => x.Id).ToList();
-            DbHelper.Db.Deleteable<NovelCore>()
+            await DbHelper.Db.Deleteable<NovelCore>()
                 .Where(x => ids.Contains(x.Id))
-                .ExecuteCommand();
+                .ExecuteCommandAsync();
 
             StatusMessage = $"已删除 {cores.Count} 个核心梗";
-            RefreshCores();
+            await RefreshCoresAsync();
         }
     }
 

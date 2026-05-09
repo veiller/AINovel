@@ -80,6 +80,14 @@ public partial class App : Application
 
     private void ExitApp()
     {
+        var result = MessageBox.Show(
+            "确定要退出程序吗？",
+            "确认退出",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result != MessageBoxResult.Yes) return;
+
         _notifyIcon?.Dispose();
         Current.Shutdown();
     }

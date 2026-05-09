@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using AINovel.Models;
 using AINovel.Services;
+using System.Threading.Tasks;
 
 namespace AINovel.ViewModels;
 
@@ -68,14 +69,34 @@ public partial class CpViewModel : ViewModelBase
         Cps = new ObservableCollection<CreativeProject>(list);
     }
 
+    private async Task LoadCpsAsync()
+    {
+        if (SelectedAccount == null)
+        {
+            Cps.Clear();
+            return;
+        }
+
+        var list = await DbHelper.Db.Queryable<CreativeProject>()
+            .Where(x => x.AccountId == SelectedAccount.Id)
+            .OrderByDescending(x => x.CreateTime)
+            .ToListAsync();
+        Cps = new ObservableCollection<CreativeProject>(list);
+    }
+
     partial void OnSelectedAccountChanged(UserAccount? value)
     {
-        LoadCps();
+        _ = OnSelectedAccountChangedAsync(value);
+    }
+
+    private async Task OnSelectedAccountChangedAsync(UserAccount? value)
+    {
+        await LoadCpsAsync();
 
         if (Cps.Count > 0)
         {
             SelectedCp = Cps[0];
-            EditCp();
+            await EditCpAsync();
         }
         else
         {
@@ -99,7 +120,7 @@ public partial class CpViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void EditCp()
+    private async Task EditCpAsync()
     {
         if (SelectedCp == null) return;
         EditName = SelectedCp.Name;
@@ -109,7 +130,7 @@ public partial class CpViewModel : ViewModelBase
         if (SelectedCp.PromptId != null)
         {
             var promptId = SelectedCp.PromptId.Value;
-            var prompt = DbHelper.Db.Queryable<AccountPrompt>().InSingle(promptId);
+            var prompt = await DbHelper.Db.Queryable<AccountPrompt>().InSingleAsync(promptId);
             EditPromptContent = prompt?.Content ?? string.Empty;
         }
         else
@@ -121,7 +142,7 @@ public partial class CpViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SaveCp()
+    private async Task SaveCp()
     {
         if (SelectedAccount == null)
         {
@@ -145,13 +166,13 @@ public partial class CpViewModel : ViewModelBase
             {
                 // 更新已有提示词
                 var existingPromptId = SelectedCp.PromptId.Value;
-                var existingPrompt = DbHelper.Db.Queryable<AccountPrompt>().InSingle(existingPromptId);
+                var existingPrompt = await DbHelper.Db.Queryable<AccountPrompt>().InSingleAsync(existingPromptId);
                 if (existingPrompt != null)
                 {
                     existingPrompt.Title = promptTitle;
                     existingPrompt.Content = EditPromptContent;
                     existingPrompt.UpdateTime = DateTime.Now;
-                    DbHelper.Db.Updateable(existingPrompt).ExecuteCommand();
+                    await DbHelper.Db.Updateable(existingPrompt).ExecuteCommandAsync();
                     promptId = existingPrompt.Id;
                 }
             }
@@ -169,7 +190,7 @@ public partial class CpViewModel : ViewModelBase
                     CreateTime = DateTime.Now,
                     UpdateTime = DateTime.Now
                 };
-                DbHelper.Db.Insertable(newPrompt).ExecuteCommand();
+                await DbHelper.Db.Insertable(newPrompt).ExecuteCommandIdentityIntoEntityAsync();
                 promptId = newPrompt.Id;
             }
         }
@@ -185,7 +206,7 @@ public partial class CpViewModel : ViewModelBase
                 CreateTime = DateTime.Now,
                 UpdateTime = DateTime.Now
             };
-            DbHelper.Db.Insertable(cp).ExecuteCommand();
+            await DbHelper.Db.Insertable(cp).ExecuteCommandAsync();
             StatusMessage = "CP添加成功";
         }
         else
@@ -194,16 +215,16 @@ public partial class CpViewModel : ViewModelBase
             SelectedCp.Description = EditDescription;
             SelectedCp.PromptId = promptId;
             SelectedCp.UpdateTime = DateTime.Now;
-            DbHelper.Db.Updateable(SelectedCp).ExecuteCommand();
+            await DbHelper.Db.Updateable(SelectedCp).ExecuteCommandAsync();
             StatusMessage = "CP更新成功";
         }
 
         IsEditing = false;
-        LoadCps();
+        await LoadCpsAsync();
     }
 
     [RelayCommand]
-    private void DeleteCp()
+    private async Task DeleteCpAsync()
     {
         if (SelectedCp == null) return;
 
@@ -215,11 +236,11 @@ public partial class CpViewModel : ViewModelBase
 
         if (result != MessageBoxResult.Yes) return;
 
-        DbHelper.Db.Deleteable<CreativeProject>()
+        await DbHelper.Db.Deleteable<CreativeProject>()
             .Where(x => x.Id == SelectedCp.Id)
-            .ExecuteCommand();
+            .ExecuteCommandAsync();
         StatusMessage = "CP删除成功";
-        LoadCps();
+        await LoadCpsAsync();
     }
 
     [RelayCommand]

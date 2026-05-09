@@ -154,15 +154,15 @@ public partial class BackupViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SaveSettings()
+    private async Task SaveSettingsAsync()
     {
-        var config = DbHelper.Db.Queryable<SystemConfig>().First();
+        var config = await DbHelper.Db.Queryable<SystemConfig>().FirstAsync();
         if (config != null)
         {
             config.BackupPath = BackupPath;
             config.BackupRetentionDays = BackupRetentionDays;
             config.UpdateTime = DateTime.Now;
-            DbHelper.Db.Updateable(config).ExecuteCommand();
+            await DbHelper.Db.Updateable(config).ExecuteCommandAsync();
             StatusMessage = "备份设置已保存";
         }
     }

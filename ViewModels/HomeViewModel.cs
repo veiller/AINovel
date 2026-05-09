@@ -36,7 +36,6 @@ public partial class HomeViewModel : ViewModelBase
         RefreshStatistics();
     }
 
-    [RelayCommand]
     private void RefreshStatistics()
     {
         TotalAccounts = DbHelper.Db.Queryable<UserAccount>().Count();
@@ -48,8 +47,24 @@ public partial class HomeViewModel : ViewModelBase
             .Where(x => x.GenerateStatus == 0)
             .Count();
 
-        // 实时读取配置状态（配置可能在其他页面被修改）
         var currentConfig = DbHelper.Db.Queryable<SystemConfig>().First();
+        ApiStatus = !string.IsNullOrEmpty(currentConfig?.GptApiKey) ? "已配置" : "未配置";
+    }
+
+    [RelayCommand]
+    private async Task RefreshStatisticsAsync()
+    {
+        TotalAccounts = await DbHelper.Db.Queryable<UserAccount>().CountAsync();
+        TotalCores = await DbHelper.Db.Queryable<NovelCore>().CountAsync();
+        TotalGenerated = await DbHelper.Db.Queryable<NovelCore>()
+            .Where(x => x.GenerateStatus == 2 || x.GenerateStatus == 4)
+            .CountAsync();
+        TotalPending = await DbHelper.Db.Queryable<NovelCore>()
+            .Where(x => x.GenerateStatus == 0)
+            .CountAsync();
+
+        // 实时读取配置状态（配置可能在其他页面被修改）
+        var currentConfig = await DbHelper.Db.Queryable<SystemConfig>().FirstAsync();
         ApiStatus = !string.IsNullOrEmpty(currentConfig?.GptApiKey) ? "已配置" : "未配置";
     }
 

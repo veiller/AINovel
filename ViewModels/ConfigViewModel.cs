@@ -54,7 +54,7 @@ public partial class ConfigViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void Save()
+    private async Task SaveAsync()
     {
         _config.GptApiUrl = GptApiUrl;
         _config.GptApiKey = GptApiKey;
@@ -67,11 +67,11 @@ public partial class ConfigViewModel : ViewModelBase
 
         if (_config.Id == 0)
         {
-            DbHelper.Db.Insertable(_config).ExecuteCommand();
+            await DbHelper.Db.Insertable(_config).ExecuteCommandAsync();
         }
         else
         {
-            DbHelper.Db.Updateable(_config).ExecuteCommand();
+            await DbHelper.Db.Updateable(_config).ExecuteCommandAsync();
         }
 
         GenerationService.Instance.UpdateThreadCount(MaxThreadCount);

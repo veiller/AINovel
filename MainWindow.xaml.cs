@@ -41,8 +41,27 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        e.Cancel = true;
-        WindowState = WindowState.Minimized;
-        Hide();
+        var result = MessageBox.Show(
+            "是否退出程序？\n\n点击「是」关闭程序，点击「否」最小化到系统托盘，点击「取消」继续编辑。",
+            "确认退出",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question);
+
+        switch (result)
+        {
+            case MessageBoxResult.Yes:
+                e.Cancel = false;
+                _ = Dispatcher.InvokeAsync(() => Application.Current.Shutdown());
+                break;
+            case MessageBoxResult.No:
+                e.Cancel = true;
+                WindowState = WindowState.Minimized;
+                Hide();
+                break;
+            case MessageBoxResult.Cancel:
+            default:
+                e.Cancel = true;
+                break;
+        }
     }
 }

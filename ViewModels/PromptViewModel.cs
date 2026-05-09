@@ -80,9 +80,24 @@ public partial class PromptViewModel : ViewModelBase
         AccountPrompts = new ObservableCollection<AccountPrompt>(list);
     }
 
+    private async Task LoadAccountPromptsAsync()
+    {
+        if (SelectedAccount == null)
+        {
+            AccountPrompts.Clear();
+            return;
+        }
+
+        var list = await DbHelper.Db.Queryable<AccountPrompt>()
+            .Where(x => x.AccountId == SelectedAccount.Id)
+            .OrderByDescending(x => x.CreateTime)
+            .ToListAsync();
+        AccountPrompts = new ObservableCollection<AccountPrompt>(list);
+    }
+
     partial void OnSelectedAccountChanged(UserAccount? value)
     {
-        LoadAccountPrompts();
+        _ = LoadAccountPromptsAsync();
     }
 
     [RelayCommand]
@@ -106,7 +121,7 @@ public partial class PromptViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SavePrompt()
+    private async Task SavePromptAsync()
     {
         if (string.IsNullOrWhiteSpace(EditTitle) || string.IsNullOrWhiteSpace(EditContent))
         {
@@ -116,15 +131,15 @@ public partial class PromptViewModel : ViewModelBase
 
         if (SelectedTabIndex == 0)
         {
-            SaveCommonPrompt();
+            await SaveCommonPromptAsync();
         }
         else
         {
-            SaveAccountPrompt();
+            await SaveAccountPromptAsync();
         }
     }
 
-    private void SaveCommonPrompt()
+    private async Task SaveCommonPromptAsync()
     {
         if (SelectedCommonPrompt == null)
         {
@@ -135,26 +150,26 @@ public partial class PromptViewModel : ViewModelBase
                 CreateTime = DateTime.Now,
                 UpdateTime = DateTime.Now
             };
-            DbHelper.Db.Insertable(prompt).ExecuteCommand();
+            await DbHelper.Db.Insertable(prompt).ExecuteCommandAsync();
             StatusMessage = "公共提示词添加成功";
         }
         else
         {
-            DbHelper.Db.Updateable<CommonPrompt>()
+            await DbHelper.Db.Updateable<CommonPrompt>()
                 .SetColumns(x => x.Title == EditTitle)
                 .SetColumns(x => x.Content == EditContent)
                 .SetColumns(x => x.UpdateTime == DateTime.Now)
                 .Where(x => x.Id == SelectedCommonPrompt.Id)
-                .ExecuteCommand();
+                .ExecuteCommandAsync();
             StatusMessage = "公共提示词更新成功";
         }
 
         IsEditing = false;
-        var commonList = DbHelper.Db.Queryable<CommonPrompt>().OrderByDescending(x => x.CreateTime).ToList();
+        var commonList = await DbHelper.Db.Queryable<CommonPrompt>().OrderByDescending(x => x.CreateTime).ToListAsync();
         CommonPrompts = new ObservableCollection<CommonPrompt>(commonList);
     }
 
-    private void SaveAccountPrompt()
+    private async Task SaveAccountPromptAsync()
     {
         if (SelectedAccount == null)
         {
@@ -173,27 +188,27 @@ public partial class PromptViewModel : ViewModelBase
                 CreateTime = DateTime.Now,
                 UpdateTime = DateTime.Now
             };
-            DbHelper.Db.Insertable(prompt).ExecuteCommand();
+            await DbHelper.Db.Insertable(prompt).ExecuteCommandAsync();
             StatusMessage = "私有提示词添加成功";
         }
         else
         {
-            DbHelper.Db.Updateable<AccountPrompt>()
+            await DbHelper.Db.Updateable<AccountPrompt>()
                 .SetColumns(x => x.Title == EditTitle)
                 .SetColumns(x => x.Content == EditContent)
                 .SetColumns(x => x.IsDefault == EditIsDefault)
                 .SetColumns(x => x.UpdateTime == DateTime.Now)
                 .Where(x => x.Id == SelectedAccountPrompt.Id)
-                .ExecuteCommand();
+                .ExecuteCommandAsync();
             StatusMessage = "私有提示词更新成功";
         }
 
         IsEditing = false;
-        LoadAccountPrompts();
+        await LoadAccountPromptsAsync();
     }
 
     [RelayCommand]
-    private void DeleteCommonPrompt()
+    private async Task DeleteCommonPromptAsync()
     {
         if (SelectedCommonPrompt == null) return;
 
@@ -205,15 +220,15 @@ public partial class PromptViewModel : ViewModelBase
 
         if (result != MessageBoxResult.Yes) return;
 
-        DbHelper.Db.Deleteable<CommonPrompt>()
+        await DbHelper.Db.Deleteable<CommonPrompt>()
             .Where(x => x.Id == SelectedCommonPrompt.Id)
-            .ExecuteCommand();
+            .ExecuteCommandAsync();
         StatusMessage = "公共提示词删除成功";
         LoadData();
     }
 
     [RelayCommand]
-    private void CopyToAccount()
+    private async Task CopyToAccountAsync()
     {
         if (SelectedCommonPrompt == null || SelectedAccount == null)
         {
@@ -230,9 +245,9 @@ public partial class PromptViewModel : ViewModelBase
             CreateTime = DateTime.Now,
             UpdateTime = DateTime.Now
         };
-        DbHelper.Db.Insertable(prompt).ExecuteCommand();
+        await DbHelper.Db.Insertable(prompt).ExecuteCommandAsync();
         StatusMessage = "已复制到账号私有提示词";
-        LoadAccountPrompts();
+        await LoadAccountPromptsAsync();
     }
 
     [RelayCommand]
@@ -261,7 +276,7 @@ public partial class PromptViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void DeleteAccountPrompt()
+    private async Task DeleteAccountPromptAsync()
     {
         if (SelectedAccountPrompt == null) return;
 
@@ -273,30 +288,30 @@ public partial class PromptViewModel : ViewModelBase
 
         if (result != MessageBoxResult.Yes) return;
 
-        DbHelper.Db.Deleteable<AccountPrompt>()
+        await DbHelper.Db.Deleteable<AccountPrompt>()
             .Where(x => x.Id == SelectedAccountPrompt.Id)
-            .ExecuteCommand();
+            .ExecuteCommandAsync();
         StatusMessage = "私有提示词删除成功";
-        LoadAccountPrompts();
+        await LoadAccountPromptsAsync();
     }
 
     [RelayCommand]
-    private void SetAsDefault()
+    private async Task SetAsDefaultAsync()
     {
         if (SelectedAccountPrompt == null) return;
 
-        DbHelper.Db.Updateable<AccountPrompt>()
+        await DbHelper.Db.Updateable<AccountPrompt>()
             .SetColumns(x => x.IsDefault == false)
             .Where(x => x.AccountId == SelectedAccountPrompt.AccountId)
-            .ExecuteCommand();
+            .ExecuteCommandAsync();
 
-        DbHelper.Db.Updateable<AccountPrompt>()
+        await DbHelper.Db.Updateable<AccountPrompt>()
             .SetColumns(x => x.IsDefault == true)
             .Where(x => x.Id == SelectedAccountPrompt.Id)
-            .ExecuteCommand();
+            .ExecuteCommandAsync();
 
         StatusMessage = "已设为默认提示词";
-        LoadAccountPrompts();
+        await LoadAccountPromptsAsync();
     }
 
     [RelayCommand]

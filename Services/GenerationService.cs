@@ -55,36 +55,36 @@ public class GenerationService
 
     // ========== Public API ==========
 
-    public void EnqueueRequest(NovelCore core, int generateType)
+    public async Task EnqueueRequestAsync(NovelCore core, int generateType)
     {
         EnsureWorkers();
 
         // 更新状态为"等待生成"并清空生成时间和错误信息
-        DbHelper.Db.Updateable<NovelCore>()
+        await DbHelper.Db.Updateable<NovelCore>()
             .SetColumns(x => x.GenerateStatus == 5)
             .SetColumns(x => x.GenerateTime == null)
             .SetColumns(x => x.FailReason == "")
             .Where(x => x.Id == core.Id)
-            .ExecuteCommand();
+            .ExecuteCommandAsync();
 
         Interlocked.Increment(ref _pendingCount);
         _pendingSet.TryAdd(core.Id, 0);
         _channel.Writer.TryWrite(new GenerationRequest(core, generateType));
     }
 
-    public void EnqueueBatch(IEnumerable<NovelCore> cores, int generateType)
+    public async Task EnqueueBatchAsync(IEnumerable<NovelCore> cores, int generateType)
     {
         EnsureWorkers();
         var count = 0;
         foreach (var core in cores)
         {
             // 更新状态为"等待生成"并清空生成时间和错误信息
-            DbHelper.Db.Updateable<NovelCore>()
+            await DbHelper.Db.Updateable<NovelCore>()
                 .SetColumns(x => x.GenerateStatus == 5)
                 .SetColumns(x => x.GenerateTime == (DateTime?)null)
                 .SetColumns(x => x.FailReason == "")
                 .Where(x => x.Id == core.Id)
-                .ExecuteCommand();
+                .ExecuteCommandAsync();
 
             _pendingSet.TryAdd(core.Id, 0);
             _channel.Writer.TryWrite(new GenerationRequest(core, generateType));
@@ -297,7 +297,7 @@ public class GenerationService
                             foreach (var core in cores)
                             {
                                 if (!_isRunning || _autoLoopCts.IsCancellationRequested) break;
-                                EnqueueRequest(core, 0);
+                                await EnqueueRequestAsync(core, 0);
                                 accountTotalEnqueued++;
                             }
                         }
@@ -323,7 +323,7 @@ public class GenerationService
                         foreach (var core in cores)
                         {
                             if (!_isRunning || _autoLoopCts.IsCancellationRequested) break;
-                            EnqueueRequest(core, 0);
+                            await EnqueueRequestAsync(core, 0);
                             accountTotalEnqueued++;
                         }
                     }

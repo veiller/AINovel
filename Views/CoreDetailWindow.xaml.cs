@@ -20,20 +20,20 @@ public partial class CoreDetailWindow : Window
         DataContext = new CoreDetailViewModel(core);
     }
 
-    private void OnSaveClick(object sender, RoutedEventArgs e)
+    private async void OnSaveClick(object sender, RoutedEventArgs e)
     {
         // 将 UI 中的修改写回实体
         var vm = (CoreDetailViewModel)DataContext;
         _core.Content = vm.Content;
 
         // 保存到数据库
-        DbHelper.Db.Updateable<NovelCore>()
+        await DbHelper.Db.Updateable<NovelCore>()
             .SetColumns(x => x.Content == _core.Content)
             .Where(x => x.Id == _core.Id)
-            .ExecuteCommand();
+            .ExecuteCommandAsync();
 
         // 刷新父 ViewModel 的列表
-        _parentViewModel.RefreshCores();
+        await _parentViewModel.RefreshCoresAsync();
 
         DialogResult = true;
         Close();
