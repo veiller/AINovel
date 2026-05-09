@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using AINovel.Helpers;
 using AINovel.Services;
@@ -8,10 +10,41 @@ namespace AINovel;
 
 public partial class App : Application
 {
+    private const string MutexName = "AINovel-SingleInstance";
+    private static Mutex? _mutex;
     private WinForms.NotifyIcon? _notifyIcon;
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    private const int SW_RESTORE = 9;
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        _mutex = new Mutex(true, MutexName, out var createdNew);
+        if (!createdNew)
+        {
+            var current = Process.GetCurrentProcess();
+            var existing = Process.GetProcessesByName(current.ProcessName)
+                .FirstOrDefault(p => p.Id != current.Id);
+            if (existing != null && existing.MainWindowHandle != IntPtr.Zero)
+            {
+                ShowWindowAsync(existing.MainWindowHandle, SW_RESTORE);
+                SetForegroundWindow(existing.MainWindowHandle);
+            }
+            else
+            {
+                MessageBox.Show("程序已在运行中。", "提示",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            Current.Shutdown();
+            return;
+        }
+
+        // 注册全局异常处理
         // 注册全局异常处理
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {
@@ -94,6 +127,8 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _mutex?.ReleaseMutex();
+        _mutex?.Close();
         _notifyIcon?.Dispose();
         base.OnExit(e);
     }
