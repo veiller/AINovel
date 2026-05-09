@@ -92,7 +92,6 @@ public partial class GenerateViewModel : ViewModelBase
             {
                 var (accountId, coreId, content) = m.Value;
                 _streamingCache[coreId] = content;
-                IsGenerating = SelectedCore?.Id == coreId;
 
                 // 只在详情面板正展示该文章时刷新
                 if (SelectedCore?.Id == coreId)
