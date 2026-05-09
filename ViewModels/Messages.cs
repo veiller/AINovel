@@ -12,6 +12,11 @@ public class GenerationCompletedMessage : ValueChangedMessage<(int AccountId, in
     public GenerationCompletedMessage((int, int, string) value) : base(value) { }
 }
 
+public class GenerationProgressMessage : ValueChangedMessage<(int AccountId, int CoreId, string Content)>
+{
+    public GenerationProgressMessage((int, int, string) value) : base(value) { }
+}
+
 public class GenerationFailedMessage : ValueChangedMessage<(int AccountId, int CoreId, string Reason)>
 {
     public GenerationFailedMessage((int, int, string) value) : base(value) { }

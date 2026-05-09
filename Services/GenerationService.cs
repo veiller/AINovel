@@ -23,12 +23,30 @@ public class GenerationService
     private int _totalSucceeded;
     private int _totalFailed;
     private readonly ConcurrentDictionary<int, byte> _pendingSet = new();
+    private readonly ConcurrentDictionary<int, CancellationTokenSource> _cancellationTokens = new();
 
     public event Action<int, int, string>? GenerationCompleted;
     public event Action<int, int, string>? GenerationFailed;
 
     /// <summary>检查指定核心梗是否正在队列中等待（尚未开始处理）</summary>
     public bool IsInQueue(int coreId) => _pendingSet.ContainsKey(coreId);
+
+    /// <summary>终止指定核心梗的生成</summary>
+    public void CancelGeneration(int coreId)
+    {
+        // 取消正在进行的 HTTP 请求
+        if (_cancellationTokens.TryGetValue(coreId, out var cts))
+        {
+            cts.Cancel();
+        }
+
+        // 更新数据库状态
+        DbHelper.Db.Updateable<NovelCore>()
+            .SetColumns(x => x.GenerateStatus == 3)
+            .SetColumns(x => x.FailReason == "用户终止")
+            .Where(x => x.Id == coreId)
+            .ExecuteCommand();
+    }
 
     private GenerationService()
     {
@@ -196,6 +214,8 @@ public class GenerationService
         var generateType = request.GenerateType;
         var config = GetConfig();
 
+        using var userCts = new CancellationTokenSource();
+        _cancellationTokens.TryAdd(core.Id, userCts);
         try
         {
             // 从待处理集合中移除（开始处理）
@@ -212,12 +232,30 @@ public class GenerationService
 
             var prompt = GetPrompt(core);
 
+            var sb = new System.Text.StringBuilder();
             var content = await _gptService.GenerateAsync(
                 config.GptApiUrl,
                 config.GptApiKey,
                 prompt,
                 config.GptModel,
-                config.ApiTimeout);
+                config.ApiTimeout,
+                cancellationToken: userCts.Token,
+                onChunk: chunk =>
+                {
+                    sb.Append(chunk);
+                    WeakReferenceMessenger.Default.Send(
+                        new GenerationProgressMessage((core.AccountId, core.Id, sb.ToString())));
+                });
+
+            // 用户已终止，不保存内容
+            if (userCts.IsCancellationRequested)
+            {
+                GenerationFailed?.Invoke(core.AccountId, core.Id, "用户终止");
+                WeakReferenceMessenger.Default.Send(
+                    new GenerationFailedMessage((core.AccountId, core.Id, "用户终止")));
+                Interlocked.Increment(ref _totalFailed);
+                return;
+            }
 
             DbHelper.Db.Updateable<NovelCore>()
                 .SetColumns(x => x.GenerateStatus == 2)
@@ -233,6 +271,14 @@ public class GenerationService
                 new GenerationCompletedMessage((core.AccountId, core.Id, content)));
             Interlocked.Increment(ref _totalSucceeded);
         }
+        catch (OperationCanceledException) when (userCts.IsCancellationRequested)
+        {
+            // 用户取消了生成
+            GenerationFailed?.Invoke(core.AccountId, core.Id, "用户终止");
+            WeakReferenceMessenger.Default.Send(
+                new GenerationFailedMessage((core.AccountId, core.Id, "用户终止")));
+            Interlocked.Increment(ref _totalFailed);
+        }
         catch (Exception ex)
         {
             DbHelper.Db.Updateable<NovelCore>()
@@ -245,6 +291,10 @@ public class GenerationService
             WeakReferenceMessenger.Default.Send(
                 new GenerationFailedMessage((core.AccountId, core.Id, ex.Message)));
             Interlocked.Increment(ref _totalFailed);
+        }
+        finally
+        {
+            _cancellationTokens.TryRemove(core.Id, out _);
         }
 
         if (Interlocked.Decrement(ref _pendingCount) == 0)

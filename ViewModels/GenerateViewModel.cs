@@ -51,18 +51,20 @@ public partial class GenerateViewModel : ViewModelBase
     private bool _hasSelectedContent;
 
     [ObservableProperty]
-    private string _selectedGenerateHtml = string.Empty;
-
-    [ObservableProperty]
     private int _selectedCount;
 
     [ObservableProperty]
     private int _contentWordCount;
 
+    [ObservableProperty]
+    private bool _isGenerating;
+
     public ObservableCollection<string> StatusFilters { get; } = new()
     {
         "全部", "未发布", "待生成", "等待生成", "生成中", "已生成", "生成失败", "已发布"
     };
+
+    private readonly Dictionary<int, string> _streamingCache = new();
 
     public GenerateViewModel(SystemConfig config)
     {
@@ -84,11 +86,31 @@ public partial class GenerateViewModel : ViewModelBase
             });
         });
 
+        WeakReferenceMessenger.Default.Register<GenerationProgressMessage>(this, (r, m) =>
+        {
+            Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                var (accountId, coreId, content) = m.Value;
+                _streamingCache[coreId] = content;
+                IsGenerating = SelectedCore?.Id == coreId;
+
+                // 只在详情面板正展示该文章时刷新
+                if (SelectedCore?.Id == coreId)
+                {
+                    SelectedGenerateContent = content;
+                    HasSelectedContent = true;
+                    ContentWordCount = GetWordCount(content);
+                }
+            });
+        });
+
         WeakReferenceMessenger.Default.Register<GenerationCompletedMessage>(this, (r, m) =>
         {
             Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 var (accountId, coreId, content) = m.Value;
+                _streamingCache.Remove(coreId);
+
                 var core = Cores.FirstOrDefault(x => x.Id == coreId);
                 if (core != null)
                 {
@@ -97,6 +119,15 @@ public partial class GenerateViewModel : ViewModelBase
                     core.GenerateTime = DateTime.Now;
                     RefreshCoreInGrid(core);
                 }
+
+                // 如果详情面板正展示该文章，刷新为最终完整内容
+                if (SelectedCore?.Id == coreId)
+                {
+                    SelectedGenerateContent = content;
+                    HasSelectedContent = !string.IsNullOrEmpty(content);
+                    ContentWordCount = GetWordCount(content);
+                }
+
                 StatusMessage = $"核心梗【{core?.SerialNumber}】生成完成";
             });
         });
@@ -136,8 +167,11 @@ public partial class GenerateViewModel : ViewModelBase
         var idx = Cores.IndexOf(core);
         if (idx >= 0)
         {
+            var selectedId = SelectedCore?.Id;
             Cores.RemoveAt(idx);
             Cores.Insert(idx, core);
+            if (selectedId.HasValue)
+                SelectedCore = Cores.FirstOrDefault(x => x.Id == selectedId.Value);
         }
     }
 
@@ -235,17 +269,26 @@ public partial class GenerateViewModel : ViewModelBase
     // 选中行时自动显示内容
     partial void OnSelectedCoreChanged(NovelCore? value)
     {
+        IsGenerating = value?.GenerateStatus == 1;
+
         if (value != null)
         {
-            SelectedGenerateContent = value.GenerateContent ?? string.Empty;
-            SelectedGenerateHtml = MarkdownHelper.ToHtml(SelectedGenerateContent);
-            HasSelectedContent = !string.IsNullOrEmpty(SelectedGenerateContent);
-            ContentWordCount = GetWordCount(SelectedGenerateContent);
+            if (value.GenerateStatus == 1 && _streamingCache.TryGetValue(value.Id, out var streamingContent))
+            {
+                SelectedGenerateContent = streamingContent;
+                HasSelectedContent = !string.IsNullOrEmpty(streamingContent);
+                ContentWordCount = GetWordCount(streamingContent);
+            }
+            else
+            {
+                SelectedGenerateContent = value.GenerateContent ?? string.Empty;
+                HasSelectedContent = !string.IsNullOrEmpty(SelectedGenerateContent);
+                ContentWordCount = GetWordCount(SelectedGenerateContent);
+            }
         }
         else
         {
             SelectedGenerateContent = string.Empty;
-            SelectedGenerateHtml = string.Empty;
             HasSelectedContent = false;
             ContentWordCount = 0;
         }
@@ -255,8 +298,15 @@ public partial class GenerateViewModel : ViewModelBase
     private void ViewContent()
     {
         if (SelectedCore == null) return;
-        SelectedGenerateContent = SelectedCore.GenerateContent ?? string.Empty;
-        SelectedGenerateHtml = MarkdownHelper.ToHtml(SelectedGenerateContent);
+
+        if (SelectedCore.GenerateStatus == 1 && _streamingCache.TryGetValue(SelectedCore.Id, out var streamingContent))
+        {
+            SelectedGenerateContent = streamingContent;
+        }
+        else
+        {
+            SelectedGenerateContent = SelectedCore.GenerateContent ?? string.Empty;
+        }
         HasSelectedContent = !string.IsNullOrEmpty(SelectedGenerateContent);
         ContentWordCount = GetWordCount(SelectedGenerateContent);
     }
@@ -372,6 +422,30 @@ public partial class GenerateViewModel : ViewModelBase
             StatusMessage = $"已删除 {cores.Count} 个核心梗";
             await RefreshCoresAsync();
         }
+    }
+
+    // ========== 终止生成 ==========
+
+    [RelayCommand]
+    private void StopGeneration()
+    {
+        var core = SelectedCore;
+        if (core == null || core.GenerateStatus != 1) return;
+
+        var result = System.Windows.MessageBox.Show(
+            $"确定要终止核心梗【{core.SerialNumber}】的生成吗？",
+            "确认终止",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes) return;
+
+        GenerationService.Instance.CancelGeneration(core.Id);
+
+        core.GenerateStatus = 3;
+        core.FailReason = "用户终止";
+        RefreshCoreInGrid(core);
+        StatusMessage = $"核心梗【{core.SerialNumber}】已终止生成";
     }
 
     // ========== 复制操作 ==========

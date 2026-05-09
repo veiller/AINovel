@@ -11,7 +11,7 @@ public class GptService
     // 超时由每个请求的 CancellationTokenSource 单独控制，HttpClient 本身不做超时限制
     private static readonly HttpClient _httpClient = new() { Timeout = System.Threading.Timeout.InfiniteTimeSpan };
 
-    public async Task<string> GenerateAsync(string apiUrl, string apiKey, string prompt, string model = "gpt-3.5-turbo", int timeoutSeconds = 120, CancellationToken cancellationToken = default)
+    public async Task<string> GenerateAsync(string apiUrl, string apiKey, string prompt, string model = "gpt-3.5-turbo", int timeoutSeconds = 120, CancellationToken cancellationToken = default, Action<string>? onChunk = null)
     {
         const int maxRetries = 2;
         var retryDelay = TimeSpan.FromSeconds(2);
@@ -20,19 +20,23 @@ public class GptService
         {
             try
             {
-                return await GenerateOnceAsync(apiUrl, apiKey, prompt, model, timeoutSeconds, cancellationToken);
+                return await GenerateOnceAsync(apiUrl, apiKey, prompt, model, timeoutSeconds, cancellationToken, onChunk);
             }
-            catch (OperationCanceledException) when (attempt < maxRetries)
+            catch (OperationCanceledException) when (attempt < maxRetries && !cancellationToken.IsCancellationRequested)
             {
                 Debug.WriteLine($"GPT API 超时(第{attempt + 1}次)，即将重试");
                 await Task.Delay(retryDelay, cancellationToken);
                 retryDelay *= 2;
             }
-            catch (HttpRequestException) when (attempt < maxRetries)
+            catch (HttpRequestException) when (attempt < maxRetries && !cancellationToken.IsCancellationRequested)
             {
                 Debug.WriteLine($"GPT API 网络错误(第{attempt + 1}次)，即将重试");
                 await Task.Delay(retryDelay, cancellationToken);
                 retryDelay *= 2;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (OperationCanceledException)
             {
@@ -41,7 +45,7 @@ public class GptService
         }
     }
 
-    private static async Task<string> GenerateOnceAsync(string apiUrl, string apiKey, string prompt, string model, int timeoutSeconds, CancellationToken cancellationToken)
+    private static async Task<string> GenerateOnceAsync(string apiUrl, string apiKey, string prompt, string model, int timeoutSeconds, CancellationToken cancellationToken, Action<string>? onChunk = null)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
@@ -86,7 +90,9 @@ public class GptService
                     choices[0].TryGetProperty("delta", out var delta) &&
                     delta.TryGetProperty("content", out var content))
                 {
-                    result.Append(content.GetString());
+                    var text = content.GetString() ?? "";
+                    result.Append(text);
+                    onChunk?.Invoke(text);
                 }
             }
             catch (JsonException ex)

@@ -10,7 +10,7 @@ public static class MarkdownHelper
         .UseAdvancedExtensions()
         .Build();
 
-    public static string ToHtml(string markdown)
+    public static string ToHtml(string markdown, bool autoScroll = false)
     {
         if (string.IsNullOrWhiteSpace(markdown))
             return string.Empty;
@@ -20,6 +20,10 @@ public static class MarkdownHelper
         normalized = Regex.Replace(normalized, @"(?<!\n)\n(?!\n)", "\n\n");
 
         var body = Markdown.ToHtml(normalized, Pipeline);
+
+        var scrollScript = autoScroll
+            ? "<script>window.scrollTo(0,document.body.scrollHeight)</script>"
+            : "";
 
         return $@"<!DOCTYPE html>
 <html>
@@ -47,7 +51,7 @@ public static class MarkdownHelper
     img {{ max-width: 100%; }}
 </style>
 </head>
-<body>{body}</body>
+<body>{body}{scrollScript}</body>
 </html>";
     }
 
