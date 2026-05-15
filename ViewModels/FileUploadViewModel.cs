@@ -162,49 +162,20 @@ public partial class FileUploadViewModel : ViewModelBase
         var accountId = SelectedAccount.Id;
         var cpId = SelectedCp?.Id;
 
-        // 查询已有序号，避免重复
-        var existingSerials = await DbHelper.Db.Queryable<NovelCore>()
-            .Where(x => x.AccountId == accountId)
-            .Select(x => x.SerialNumber)
-            .ToListAsync();
-
-        var coresToInsert = new List<NovelCore>();
-        var duplicateCount = 0;
-
-        foreach (var item in PreviewCores)
+        var coresToInsert = PreviewCores.Select(item => new NovelCore
         {
-            if (existingSerials.Contains(item.SerialNumber))
-            {
-                duplicateCount++;
-                continue;
-            }
+            AccountId = accountId,
+            SerialNumber = item.SerialNumber,
+            Content = item.Content,
+            GenerateStatus = 0,
+            CreateTime = DateTime.Now,
+            GenerateProgress = 0,
+            CpId = cpId
+        }).ToList();
 
-            coresToInsert.Add(new NovelCore
-            {
-                AccountId = accountId,
-                SerialNumber = item.SerialNumber,
-                Content = item.Content,
-                GenerateStatus = 0,
-                CreateTime = DateTime.Now,
-                GenerateProgress = 0,
-                CpId = cpId
-            });
-        }
-
-        if (coresToInsert.Count == 0)
-        {
-            StatusMessage = "所有核心梗均已存在，无新数据保存";
-            return;
-        }
-
-        // 批量插入
         await DbHelper.Db.Insertable(coresToInsert).ExecuteCommandAsync();
 
         var msg = $"已保存 {coresToInsert.Count} 个核心梗到账号 {SelectedAccount.AccountName}";
-        if (duplicateCount > 0)
-        {
-            msg += $"，{duplicateCount} 个重复序号已跳过";
-        }
 
         StatusMessage = msg;
         PreviewCores.Clear();
@@ -244,16 +215,6 @@ public partial class FileUploadViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(EditContent))
         {
             StatusMessage = "核心梗内容不能为空";
-            return;
-        }
-
-        // 检查重复序号
-        var exists = await DbHelper.Db.Queryable<NovelCore>()
-            .AnyAsync(x => x.AccountId == SelectedAccount.Id && x.SerialNumber == EditSerialNumber);
-
-        if (exists)
-        {
-            StatusMessage = $"序号 {EditSerialNumber} 已存在，请使用其他序号";
             return;
         }
 

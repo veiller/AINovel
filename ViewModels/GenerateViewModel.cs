@@ -220,7 +220,7 @@ public partial class GenerateViewModel : ViewModelBase
             }
         }
 
-        var list = await query.OrderByDescending(x => x.CreateTime).ToListAsync();
+        var list = await query.OrderBy(x => x.Id).ToListAsync();
 
         // 应用 CP 筛选（内存筛选，因为可能已有其他 SQL 条件）
         if (FilterCp != null)
